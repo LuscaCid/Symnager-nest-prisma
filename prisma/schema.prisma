@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model clients {
+  client_id  Int      @id @default(autoincrement())
+  email      String   @unique
+  cpf        String   @unique
+  name       String
+  phone      String
+  city       String
+  district   String
+  state      String
+  street     String
+  zipcode    String
+  created_at DateTime @default(now())
+  orders     orders[]
+}
+
+model orders {
+  order_id      Int      @id @default(autoincrement())
+  device        String
+  arrived_at    DateTime @default(now()) // timestamp works at this form
+  owner         clients  @relation(fields: [owner_id], references: [client_id])
+  owner_id      Int
+  description   String
+  tags          tags[]
+  created_by    users    @relation(fields: [created_by_id], references: [user_id])
+  created_by_id Int
+}
+
+model tags {
+  tag_id             Int    @id @default(autoincrement())
+  slug               String
+  order              orders @relation(fields: [tags_has_orders_id], references: [order_id])
+  tags_has_orders_id Int
+}
+
+model users {
+  user_id    Int      @id @default(autoincrement())
+  username   String   @unique
+  email      String   @unique
+  password   String
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  orders     orders[]
+}

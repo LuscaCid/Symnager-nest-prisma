@@ -1,0 +1,47 @@
+- backend database schemas with prisma 
+
+ClientSchema:
+    
+
+UserSchema :
+    ✔ id @started(24-03-09 12:51) @done(24-03-09 16:17) @lasted(3h26m28s)
+    ✔ name @started(24-03-09 12:51) @done(24-03-09 16:17) @lasted(3h26m33s)
+    ✔ email @started(24-03-09 12:51) @done(24-03-09 16:17) @lasted(3h26m35s)
+    ✔ password @started(24-03-09 12:51) @done(24-03-09 16:17) @lasted(3h26m32s)
+
+AllLeastSchemas :
+    ✔ users @done(24-03-09 16:18)
+    ✔ clients @done(24-03-09 16:18)
+    ✔ orders @done(24-03-09 16:18)
+    ✔ tags @done(24-03-09 16:18)       
+    .  .  .   
+
+- backend routes -- controllers
+
+Session Controllers methods:
+    Login:
+        ✔ receive user email and verify ("POST") @done(24-03-14 06:59)
+        ☐ then return data from frontend to insert in headers.authorization case is truly
+        ☐ receive user password and verify that is acording with email passed ("POST")
+    Register :
+        ☐ method that receives all data and create an new user (data === {email : string, password : string, username : string})
+    
+Client Controllers methods:
+    ✔ creation of an new client ("POST") @done(24-03-14 06:58)
+    ☐ update data from clients ("PUT")
+    ☐ delete one client especified ("DELETE")
+    ☐ select one client. this method will returns the client id ("GET")
+    ☐ select multiple clients in database to show in clients history ("GET")
+    
+Orders controllers methods:
+    ☐ push from db the least orders to populate historySection in frontend ("GET")
+    ☐ Creation of an new Order (must have the client id) ("POST")
+    ☐ Deletion of an order especified by id ("DELETE")
+    ☐ Update data inside of an order ("PUT")
+    ☐ Update status of proccessing of an especified order by id ("PATCH")
+
+Users Contollers methods:
+    ☐ daily payments report pushment ("GET")
+    ☐ update user data 
+    ☐ Delete self account
+    
