@@ -1,5 +1,5 @@
 import { IsEmail, IsNotEmpty, IsOptional, Length, MinLength } from "class-validator"
-import { CreateClientProperties } from "src/repository/client-creation-interface"
+import { CreateClientProperties } from "src/Clients/interfaces/interface"
 
 export class CreateClientBody implements CreateClientProperties{
   @IsNotEmpty()

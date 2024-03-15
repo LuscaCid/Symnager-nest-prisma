@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { UserRegistrationType, UserServiceAbstraction } from "../Session-service-interface";
+import { UserRegistrationType, UserServiceAbstraction } from "./interfaces/Service-interface";
 import { PrismaService } from "src/database/prisma.service";
 
 

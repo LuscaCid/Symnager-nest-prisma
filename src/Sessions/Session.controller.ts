@@ -1,8 +1,9 @@
-import { Body, Controller, Post, Req } from "@nestjs/common";
+import { Body, Controller, Post, Req, UnauthorizedException } from "@nestjs/common";
 import { Request } from "express";
-const { hash } = require("bcryptjs")
-import { RegisterBodyDTO } from "src/dtos/User-register-boyd";
-import { SessionService } from "src/repository/prisma/Session-service";
+import { hash } from "bcrypt"
+import { sign,  } from "jsonwebtoken"
+import { RegisterBodyDTO } from "src/Users/User-register-boyd";
+import { SessionService } from "src/Sessions/Session.service";
 
 @Controller("session")
 export class SessionController {
@@ -15,14 +16,12 @@ export class SessionController {
     const emailAlreadyInUseByUsers = await this.SessionService.findByEmail(email)
     console.log(emailAlreadyInUseByUsers)
     if(emailAlreadyInUseByUsers) {
-      return {
-        email, message: "E=mail ja cadastrado na aplicacao."
-      }
+      throw new UnauthorizedException({}, "E-mail ja cadastrado na aplicação.")
     }
     const encyptPassword = await hash(password, 8)
     const user_id = await this.SessionService.create({
       email,
-      password,
+      password : encyptPassword,
       username
     })
     return user_id

@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Post, Req } from "@nestjs/common";
-import { CreateClientBody } from "src/dtos/create-client-body";
-import { ClientService } from "src/repository/prisma/ClientService";
+import { Body, Controller, Get, Post, Req, UnauthorizedException } from "@nestjs/common";
+import { CreateClientBody } from "src/Clients/dto/create-client";
+import { ClientService } from "src/Clients/Client.service";
 
 interface QueryRequest extends Request {
   query : {q : string} 
@@ -12,13 +12,14 @@ export class ClientsControllers {
 
   @Post("create")
   async createClient(@Body() body : CreateClientBody) {
-    const {cpf} = body
+    const {cpf, email} = body
     const clientExists = await this.clientService.findByCpf(cpf)
+
+    const clientExistsByEmail = await this.clientService.findByEmail(email)
     if(clientExists){
-      console.log(`usuario ja cadastrado, deseja continuar?`)
-      return {
-        message : "client ja existente na aplicacao, deseja continuar?"
-      }
+      throw new UnauthorizedException({message :"Cliente com este Cpf já cadastrado. Deseja continuar?"})
+    } else if (clientExistsByEmail){
+      throw new UnauthorizedException({message :"Cliente com este email já cadastrado. Deseja continuar?"})
     }
     const client = await this.clientService.create(body)
     

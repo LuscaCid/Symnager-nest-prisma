@@ -1,5 +1,5 @@
 import { PrismaService } from "src/database/prisma.service";
-import { ClientRepositoryModel, CreateClientProperties, UpdateClientType } from "../client-creation-interface";
+import { ClientRepositoryModel, CreateClientProperties, UpdateClientType } from "./interfaces/interface";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()
@@ -75,8 +75,15 @@ export class ClientService implements ClientRepositoryModel {
   async findByCpf(cpf: string): Promise<void | object> {
     const clientByCPF = await this.prisma.clients.findFirst({
       where : { cpf },
-      select : { cpf : true, name : true, email : true }
+      select : { cpf : true, name : true, email : true,  created_at : true }
     })
     return clientByCPF
+  }
+  async findByEmail(email : string)  {
+    const clientByEmail = await this.prisma.clients.findFirst({
+      where : { email },
+      select : { cpf : true, name : true, email : true, created_at : true }
+    })
+    return clientByEmail
   }
 }
