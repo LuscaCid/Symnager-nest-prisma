@@ -1,12 +1,3 @@
-/*
-  Warnings:
-
-  - You are about to drop the `Clients` table. If the table is not empty, all the data it contains will be lost.
-
-*/
--- DropTable
-
-
 -- CreateTable
 CREATE TABLE "clients" (
     "client_id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -19,7 +10,9 @@ CREATE TABLE "clients" (
     "state" TEXT NOT NULL,
     "street" TEXT NOT NULL,
     "zipcode" TEXT NOT NULL,
-    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_by" INTEGER,
+    CONSTRAINT "clients_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users" ("user_id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -29,9 +22,9 @@ CREATE TABLE "orders" (
     "arrived_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "owner_id" INTEGER NOT NULL,
     "description" TEXT NOT NULL,
-    "created_by_id" INTEGER NOT NULL,
+    "created_by_id" INTEGER,
     CONSTRAINT "orders_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "clients" ("client_id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "orders_created_by_id_fkey" FOREIGN KEY ("created_by_id") REFERENCES "users" ("user_id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "orders_created_by_id_fkey" FOREIGN KEY ("created_by_id") REFERENCES "users" ("user_id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable

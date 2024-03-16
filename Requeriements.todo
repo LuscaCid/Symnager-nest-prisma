@@ -21,10 +21,10 @@ AllLeastSchemas :
 Session Controllers methods:
     Login:
         ✔ receive user email and verify ("POST") @done(24-03-14 06:59)
-        ☐ then return data from frontend to insert in headers.authorization case is truly
-        ☐ receive user password and verify that is acording with email passed ("POST")
+        ✔ then return data from frontend to insert in headers.authorization case is truly @done(24-03-16 08:42)
+        ✔ receive user password and verify that is acording with email passed ("POST") @done(24-03-16 09:43)
     Register :
-        ☐ method that receives all data and create an new user (data === {email : string, password : string, username : string})
+        ✔ method that receives all data and create an new user (data === {email : string, password : string, username : string}) @done(24-03-16 09:43)
     
 Client Controllers methods:
     ✔ creation of an new client ("POST") @done(24-03-14 06:58)

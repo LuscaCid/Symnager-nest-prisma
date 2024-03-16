@@ -1,19 +1,21 @@
 import { PrismaService } from "src/database/prisma.service";
 import { ClientRepositoryModel, CreateClientProperties, UpdateClientType } from "./interfaces/interface";
-import { Injectable } from "@nestjs/common";
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
 
 @Injectable()
 export class ClientService implements ClientRepositoryModel {
   
   constructor(private prisma : PrismaService) {}
   
-  async create({name, city,cpf,district,email,phone,state,street,zipcode} : CreateClientProperties): Promise<void|object> {
+  async createClient(createDTO : CreateClientProperties, id : number): Promise<void|object> {
     try {
       const user = await this.prisma.clients.create({
-      data : { name, cpf, email, phone, city, district, state, street, zipcode }
+      data : { ...createDTO,  created : {connect : {user_id : id}}  },
+      
     })
     return user
     } catch (err) {
+      console.error(err)
       return {err}
     }
   }
@@ -50,10 +52,19 @@ export class ClientService implements ClientRepositoryModel {
     )
     return members // array or members found in query
   }
-  async updateClient(udateSection : UpdateClientType) {
-    
+   
+  async updateClient(updateData : UpdateClientType, id : number) {
+
+    try {
+      return await this.prisma.clients.update({
+        where : { client_id : id},
+        data : updateData
+      })
+    } catch (e) {
+      throw new InternalServerErrorException(e)
+    }
   }
-  async viewLatestClients () {
+  async viewLatestClients (user_id? : string) { // filter by created by me its an option of filter, vai ter a query automatica
     try {
       const clientsHistory = await this.prisma.clients.findMany(
         {
@@ -96,4 +107,5 @@ export class ClientService implements ClientRepositoryModel {
     })
     return clientByEmail
   }
+
 }

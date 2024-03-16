@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { IUser } from './interface/User.interface';
 import { UserRegistrationType } from 'src/auth/interface/Service-interface';
@@ -13,16 +13,23 @@ export class AuthService {
     return await this.jwtService.signAsync(payload)
   }
 
-  async findByEmail (email : string) {
-    //i need to verify email that was sent is already in use 
-    return await this.prisma.users.findFirst({
-      where : {email},
-      select : {
-        email : true, 
-        user_id : true, 
-        username : true
-      }
-    })
+  async findByEmail (email : string, options : {optionalData : boolean}) {
+    try {
+      //i need to verify email that was sent is already in use 
+      const userFoundByEmail = await this.prisma.users.findFirst({
+        where : {email},
+        select : {
+          email : true, 
+          user_id : true, 
+          username : options.optionalData || false,
+          password : options.optionalData || false
+        }
+      })
+      return userFoundByEmail
+    } catch (err) {
+      throw new UnauthorizedException(err)
+    }
+    
   }
 
   async create(data: UserRegistrationType): Promise<void | object> {    

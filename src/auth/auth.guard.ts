@@ -18,8 +18,7 @@ export class AuthGuard implements CanActivate{
     
     const authorization = this.extractTokenFromHeaders(request)
     
-    if(!authorization)throw new UnauthorizedException("Token nao passado.")
-    console.log(authorization)
+    if(!authorization)throw new UnauthorizedException("Token don't passed.")
     try {
       const payload = await this.jwtService.verifyAsync(authorization, {secret : authConfig.jwtSecret})
       request["user"] = payload

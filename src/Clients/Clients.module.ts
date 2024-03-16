@@ -1,6 +1,5 @@
-import { Injectable, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { ClientService } from "./Client.service";
-import { PrismaService } from "src/database/prisma.service";
 import { ClientsControllers } from "./Client.contoller";
 @Module(
   {

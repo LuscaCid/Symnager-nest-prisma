@@ -22,6 +22,8 @@ model clients {
   street     String
   zipcode    String
   created_at DateTime @default(now())
+  created    users?    @relation(fields: [created_by], references: [user_id])
+  created_by Int?
   orders     orders[]
 }
 
@@ -33,8 +35,8 @@ model orders {
   owner_id      Int
   description   String
   tags          tags[]
-  created_by    users    @relation(fields: [created_by_id], references: [user_id])
-  created_by_id Int
+  created_by    users?    @relation(fields: [created_by_id], references: [user_id])
+  created_by_id Int?
 }
 
 model tags {
@@ -45,11 +47,12 @@ model tags {
 }
 
 model users {
-  user_id    Int      @id @default(autoincrement())
-  username   String   @unique
-  email      String   @unique
+  user_id    Int       @id @default(autoincrement())
+  username   String    @unique
+  email      String    @unique
   password   String
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
   orders     orders[]
+  clients    clients[]
 }
