@@ -75,14 +75,24 @@ export class ClientService implements ClientRepositoryModel {
   async findByCpf(cpf: string): Promise<void | object> {
     const clientByCPF = await this.prisma.clients.findFirst({
       where : { cpf },
-      select : { cpf : true, name : true, email : true,  created_at : true }
+      select : { 
+        cpf : true, 
+        name : true, 
+        email : true,  
+        created_at : true 
+      }
     })
     return clientByCPF
   }
   async findByEmail(email : string)  {
     const clientByEmail = await this.prisma.clients.findFirst({
       where : { email },
-      select : { cpf : true, name : true, email : true, created_at : true }
+      select : { 
+        cpf : true, 
+        name : true, 
+        email : true, 
+        created_at : true 
+      }
     })
     return clientByEmail
   }
