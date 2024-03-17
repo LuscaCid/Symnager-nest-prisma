@@ -28,9 +28,9 @@ Session Controllers methods:
     
 Client Controllers methods:
     ✔ creation of an new client ("POST") @done(24-03-14 06:58)
-    ☐ update data from clients ("PUT")
+    ✔ update data from clients ("PUT") @done(24-03-16 23:28)
     ☐ delete one client especified ("DELETE")
-    ☐ select one client. this method will returns the client id ("GET")
+    ☐ select one client. this method will returns the client by the id ("GET")
     ☐ select multiple clients in database to show in clients history ("GET")
     
 Orders controllers methods:

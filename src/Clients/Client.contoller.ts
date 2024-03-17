@@ -1,10 +1,11 @@
-import { Body, Controller, Get, InternalServerErrorException, Post, Put, Req, UnauthorizedException, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, InternalServerErrorException, Post, Put, Req, UnauthorizedException, UseGuards } from "@nestjs/common";
 import { RequestCreateClient } from "src/Clients/dto/create-client";
 import { ClientService } from "src/Clients/Client.service";
 import { UpdateClientDTO } from "./interfaces/interface";
 import { UserInsideToken } from "./interfaces/token";
 import { PrismaService } from "src/database/prisma.service";
 import { AuthGuard } from "src/auth/auth.guard";
+import { RevokeDTO } from "./dto/RevokeDTO";
 
 
 
@@ -53,19 +54,12 @@ export class ClientsControllers {
   @Get("view")
   async viewClient(@Req() req : QueryRequest) {
     const { q } = req.query
-    const user = req.user
-    console.log(user)
     const clients = await this.clientService.queryClients(q)
     return {
       clients,
-      userLogged : user
     }
   }
-  @Get("viewlatest")
-  async viewLatestClients(@Req() data : {user : UserInsideToken}) {
-    const { user : {email ,user_id ,username} } = data
-    const queryLatestClients = await this.clientService.viewLatestClients()
-  } 
+ 
   @Put("/update")
   async updateClient(@Body() updateDTO : UpdateClientDTO) {
     try {
@@ -83,5 +77,18 @@ export class ClientsControllers {
       throw new InternalServerErrorException(e)
     }
    
+  }
+  @Delete("/revoke")
+  async revokeClient(@Req() clientDeletedDTO : RevokeDTO) {
+    const { 
+      user : {user_id},
+      body : {tryPassword , clientDeletedId},
+
+    } = clientDeletedDTO
+    
+    const deleteResponse = await this.clientService.verifyPassword(tryPassword, user_id)
+    if(!deleteResponse)throw new UnauthorizedException("Senha inválida.")
+    
+    return this.clientService.deletion(clientDeletedId)
   }
 }

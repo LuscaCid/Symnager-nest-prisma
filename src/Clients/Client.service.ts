@@ -1,7 +1,7 @@
 import { PrismaService } from "src/database/prisma.service";
 import { ClientRepositoryModel, CreateClientProperties, UpdateClientType } from "./interfaces/interface";
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
-
+import {hash , compare} from "bcryptjs"
 @Injectable()
 export class ClientService implements ClientRepositoryModel {
   
@@ -20,36 +20,39 @@ export class ClientService implements ClientRepositoryModel {
     }
   }
 
-  async queryClients(query : string ) {
-    const members = await this.prisma.clients.findMany(
-      {
-        where : {
-          OR : [
-              {
-              name : {
-                contains : query
-              }
-              },
-              {
-                cpf : {
-                  contains : query
-                }
-              },
-              {
-                email : {
-                  contains : query
-              }
-            } 
-          ]
-        },
-        select : {
-          name : true,
-          email : true,
-          created_at : true,
-          district : true 
+  async queryClients(query? : string ) {
+    let queryObject = {}
+      
+    if (query) {
+          queryObject = {
+            where : {
+              OR : [
+                  { name : {contains : query} },
+                  { cpf : { contains : query} },
+                  { email : {contains : query} } 
+              ]
+            },
+            select : {
+              name : true,
+              email : true,
+              created_at : true,
+              district : true 
+            }
+          }
+      } else {
+        queryObject = {
+          select : {
+            name : true,
+            email : true,
+            created_at : true,
+            district : true 
+          },
+          take : 20,
+          orderBy : {created_at : "asc"}
         }
       }
-    )
+    
+    const members = await this.prisma.clients.findMany( queryObject ) 
     return members // array or members found in query
   }
    
@@ -64,25 +67,7 @@ export class ClientService implements ClientRepositoryModel {
       throw new InternalServerErrorException(e)
     }
   }
-  async viewLatestClients (user_id? : string) { // filter by created by me its an option of filter, vai ter a query automatica
-    try {
-      const clientsHistory = await this.prisma.clients.findMany(
-        {
-          select : {
-            client_id : true,
-            email : true,
-            name : true,
-            
-          } ,
-          take : 1,
-          orderBy : {created_at : "asc"}
-        }
-      )
-      return clientsHistory 
-    } catch(err) {
-      return {err}
-    }
-  }
+  
   async findByCpf(cpf: string): Promise<void | object> {
     const clientByCPF = await this.prisma.clients.findFirst({
       where : { cpf },
@@ -107,5 +92,25 @@ export class ClientService implements ClientRepositoryModel {
     })
     return clientByEmail
   }
-
+  async verifyPassword (userPassword : string, userId : number) : Promise<boolean>{
+    const userFetch = await this.prisma.users.findFirst({
+      where : {
+        user_id : userId
+      }, select : {
+        password : true
+      }
+    })
+    return await compare(userPassword, userFetch.password)
+  }
+  async deletion(client_id : number) {
+    try {
+      const responseDeletionClient = await this.prisma.clients.delete({where : { client_id }})
+      return {
+        message : "Cliente deletado com sucesso"
+      }
+    }
+    catch (err) {
+      throw new InternalServerErrorException(err)
+    }
+  }
 }

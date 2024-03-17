@@ -20,9 +20,9 @@ export class AuthService {
         where : {email},
         select : {
           email : true, 
-          user_id : true, 
-          username : options.optionalData || false,
-          password : options.optionalData || false
+          user_id : options.optionalData, 
+          username : options.optionalData,
+          password : options.optionalData
         }
       })
       return userFoundByEmail
