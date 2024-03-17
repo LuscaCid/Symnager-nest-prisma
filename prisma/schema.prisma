@@ -37,6 +37,7 @@ model orders {
   tags          tags[]
   created_by    users?    @relation(fields: [created_by_id], references: [user_id])
   created_by_id Int?
+  status        String    @default("PENDING")
 }
 
 model tags {

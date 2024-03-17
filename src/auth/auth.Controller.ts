@@ -16,24 +16,22 @@ export class AuthorizationController {
   @Post("/email")
   async createLogin(@Body() data : EmailLoginDTO) {
     const {email} = data
-    const userFound = await this.authService.findByEmail(email, { optionalData : false})
     
+    const userFound = await this.authService.findByEmail(email, false)
     if(!userFound)throw new UnauthorizedException("Usuario nao encontrado!")
-
+    
     const payload = await this.jwtService.signAsync(userFound)
     return {
       access_token : payload //only email token, it cannot provide access to application for this user
     }
   }
-  @UseGuards(AuthGuard)
-  @Post("/password")
+  @Post("/password") 
   async signinPassword(@Req() PasswordDTO : PasswordDTO) {//password comes from body and token from header, but in middleware i'll inject inside request.user the payload after validating if is an email existing inside db
     const { user : {email} } = PasswordDTO //email injected inside request.user
 
     const {password} = PasswordDTO.body
     
-    const userAllData = await this.authService.findByEmail(email, {optionalData : true})
-
+    const userAllData = await this.authService.findByEmail(email, true)
     const emailEquals = userAllData.email === email
     if(!emailEquals) throw new UnauthorizedException("emails nao combinam com as contas")
     
@@ -52,8 +50,7 @@ export class AuthorizationController {
   async createUser(@Body() data : RegisterBodyDTO) {
     const {email,password,username} = data
 
-    const emailAlreadyInUseByUsers = await this.authService.findByEmail(email, { optionalData : false })
-    console.log(emailAlreadyInUseByUsers)
+    const emailAlreadyInUseByUsers = await this.authService.findByEmail(email,false)
     if(emailAlreadyInUseByUsers) {
       throw new UnauthorizedException("E-mail ja cadastrado na aplicação.")
     }

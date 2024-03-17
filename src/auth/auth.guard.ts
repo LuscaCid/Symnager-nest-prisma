@@ -14,7 +14,7 @@ export class AuthGuard implements CanActivate{
       context.getClass()
     ])
     if(isPublic)return true // estou resgatando um possivel decorator chamado (SkipAuth) para que eu possa informar se uma rota eh publica e nao precisa ser authenticada
-    const request = context.switchToHttp().getRequest()
+    const request = context.switchToHttp().getRequest() 
     
     const authorization = this.extractTokenFromHeaders(request)
     
@@ -34,4 +34,4 @@ export class AuthGuard implements CanActivate{
     return type === "Bearer" ? BearerToken : undefined
     // its relevant to verify that is an bearer token that is passed in authorization inside request
   }
-}
+} 

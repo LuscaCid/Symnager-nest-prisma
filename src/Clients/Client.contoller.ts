@@ -18,11 +18,13 @@ export class ClientsControllers {
 
   constructor(private clientService : ClientService, private prismaService : PrismaService) {}
   
-  @UseGuards(AuthGuard)
   @Post("create")
   async createClient(@Req() req : RequestCreateClient) {
-    const { body , user : {user_id } } = req
+    const { body , user : {user_id ,email : userEmail ,username } } = req
     const { email, cpf } = body
+    console.log(userEmail, username, user_id)
+    if(!userEmail || !username || !user_id)throw new UnauthorizedException("Usuário nao autenticado corretamente.")
+
     const clientExists = await this.clientService.findByCpf(cpf)
 
     const clientExistsByEmail = await this.clientService.findByEmail(email)
@@ -38,9 +40,7 @@ export class ClientsControllers {
         created_by : user_id
       }
     })
-    
     return {client}
-
   }
 
 

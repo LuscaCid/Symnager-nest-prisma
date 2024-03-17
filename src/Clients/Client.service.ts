@@ -102,11 +102,12 @@ export class ClientService implements ClientRepositoryModel {
     })
     return await compare(userPassword, userFetch.password)
   }
-  async deletion(client_id : number) {
+  async deletion(id : number) {
     try {
-      const responseDeletionClient = await this.prisma.clients.delete({where : { client_id }})
+      const responseDeletionClient = await this.prisma.clients.delete({where : { client_id : id }})
       return {
-        message : "Cliente deletado com sucesso"
+        message : "Cliente deletado com sucesso",
+        client : responseDeletionClient
       }
     }
     catch (err) {

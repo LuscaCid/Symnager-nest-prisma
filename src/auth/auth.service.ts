@@ -13,16 +13,16 @@ export class AuthService {
     return await this.jwtService.signAsync(payload)
   }
 
-  async findByEmail (email : string, options : {optionalData : boolean}) {
+  async findByEmail (email : string, isSelected : boolean) {
     try {
       //i need to verify email that was sent is already in use 
       const userFoundByEmail = await this.prisma.users.findFirst({
         where : {email},
         select : {
           email : true, 
-          user_id : options.optionalData, 
-          username : options.optionalData,
-          password : options.optionalData
+          user_id : isSelected, 
+          username : isSelected,
+          password : isSelected
         }
       })
       return userFoundByEmail
