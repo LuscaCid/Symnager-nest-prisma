@@ -7,15 +7,12 @@ import { AuthGuard } from './auth/auth.guard';
 import { OrdersModule } from './Orders/orders.module';
 
 @Module({
-  imports: [
-    AuthModule, 
-    ClientModule, 
-    PrismaModule,
-    OrdersModule,   
+  imports: [AuthModule, ClientModule, PrismaModule, OrdersModule],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
   ],
-  providers: [{
-    provide : APP_GUARD ,
-    useClass : AuthGuard
-  }],
 })
 export class AppModule {}

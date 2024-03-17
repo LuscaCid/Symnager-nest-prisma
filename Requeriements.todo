@@ -41,7 +41,7 @@ Orders controllers methods:
     ☐ Update status of proccessing of an especified order by id ("PATCH")
 
 Users Contollers methods:
-    ☐ daily payments report pushment ("GET")
-    ☐ update user data 
-    ☐ Delete self account
+    ☐ sending a report of daily payments by any user, even by himself or everyone ("GET")
+    ☐ update user data ("PUT")
+    ☐ Delete self account ("DELETE")
     

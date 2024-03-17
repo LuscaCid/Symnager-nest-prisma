@@ -1,8 +1,8 @@
-import { Contains, IsNotEmpty } from "class-validator";
+import { Contains, IsNotEmpty } from 'class-validator';
 
-export class EmailLoginDTO{
+export class EmailLoginDTO {
   @IsNotEmpty()
-  @Contains("@")
-  @Contains(".")
-  email : string
+  @Contains('@')
+  @Contains('.')
+  email: string;
 }

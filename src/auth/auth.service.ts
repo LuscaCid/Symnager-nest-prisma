@@ -6,41 +6,47 @@ import { PrismaService } from 'src/database/prisma.service';
 
 @Injectable()
 export class AuthService {
-  constructor (private prisma : PrismaService , private readonly jwtService : JwtService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
-  async SignInToken(data : IUser) {
-    const payload = {sub : data.user_id, username : data.username, email : data.email}
-    return await this.jwtService.signAsync(payload)
+  async SignInToken(data: IUser) {
+    const payload = {
+      sub: data.user_id,
+      username: data.username,
+      email: data.email,
+    };
+    return await this.jwtService.signAsync(payload);
   }
 
-  async findByEmail (email : string, isSelected : boolean) {
+  async findByEmail(email: string, isSelected: boolean) {
     try {
-      //i need to verify email that was sent is already in use 
+      //i need to verify email that was sent is already in use
       const userFoundByEmail = await this.prisma.users.findFirst({
-        where : {email},
-        select : {
-          email : true, 
-          user_id : isSelected, 
-          username : isSelected,
-          password : isSelected
-        }
-      })
-      return userFoundByEmail
+        where: { email },
+        select: {
+          email: true,
+          user_id: isSelected,
+          username: isSelected,
+          password: isSelected,
+        },
+      });
+      return userFoundByEmail;
     } catch (err) {
-      throw new UnauthorizedException(err)
+      throw new UnauthorizedException(err);
     }
-    
   }
 
-  async create(data: UserRegistrationType): Promise<void | object> {    
-    const { email,password,username } = data
+  async create(data: UserRegistrationType): Promise<void | object> {
+    const { email, password, username } = data;
     try {
-      const client =  await this.prisma.users.create({
-      data : { email,password,username }
-    })
-    return client
+      const client = await this.prisma.users.create({
+        data: { email, password, username },
+      });
+      return client;
     } catch (e) {
-      return {e}
+      return { e };
     }
   }
 }

@@ -1,5 +1,4 @@
-
 export default {
-  jwtSecret : process.env.JWT_SECRET,
-  expiresIn : "1d"
-}
+  jwtSecret: process.env.JWT_SECRET,
+  expiresIn: '1d',
+};
