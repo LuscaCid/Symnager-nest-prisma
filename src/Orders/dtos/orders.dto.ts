@@ -1,4 +1,5 @@
 import { IsNotEmpty } from 'class-validator';
+import { PrismaService } from 'src/database/prisma.service';
 
 function defaultValue(valueFromInstantiate: string) {
   return function (target: object, propertyKey: string | symbol) {
@@ -17,12 +18,17 @@ function defaultValue(valueFromInstantiate: string) {
   };
 }
 
+export interface Tags {
+  slug : string
+}
+
+
 export class OrderDTO {
   @IsNotEmpty()
   device: string;
   @IsNotEmpty()
   description: string;
-  tags: Array<string>;
+  tags: Tags [];
   @defaultValue('PENDING')
   status: string;
   @IsNotEmpty({
@@ -34,6 +40,8 @@ export class OrderDTO {
 //in frontend has an special section that links one client id to an order
 export type Order = OrderDTO & {
   order_id: number;
-  arrived_at: string;
+  arrived_at: Date;
   created_by_id: number;
 };
+const prisma = new PrismaService()
+export type OrderReturn = ReturnType<typeof prisma.orders.create>
