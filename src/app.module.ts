@@ -15,9 +15,9 @@ import { VerifyUserInRequest } from './auth/revoke-request';
       useClass: AuthGuard,
     },
     {
-      provide : APP_INTERCEPTOR,
-      useClass : VerifyUserInRequest
-    }
+      provide: APP_INTERCEPTOR,
+      useClass: VerifyUserInRequest,
+    },
   ],
 })
 export class AppModule {}

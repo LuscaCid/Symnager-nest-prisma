@@ -1,5 +1,5 @@
-import { Request } from "express";
+import { Request } from 'express';
 
-export interface QueryDTO extends Request{ 
-  q : string
+export interface QueryDTO extends Request {
+  q: string;
 }

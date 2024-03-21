@@ -26,7 +26,7 @@ export class AuthorizationController {
   @Post('/email')
   async createLogin(@Body() data: EmailLoginDTO) {
     const { email } = data;
-    
+
     const userFound = await this.authService.findByEmail(email, false);
     if (!userFound) throw new UnauthorizedException('Usuario nao encontrado!');
 

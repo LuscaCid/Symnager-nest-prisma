@@ -34,8 +34,8 @@ Client Controllers methods:
     ✘ select multiple clients in database to show in clients history ("GET") @cancelled(24-03-17 16:55)
     
 Orders controllers methods:
-    ☐ Creation of an new Order (must have the client id) ("POST")
-    ☐ get from db the least orders to populate historySection in frontend ("GET")
+    ✔ Creation of an new Order (must have the client id) ("POST") @done(24-03-20 21:46)
+    ✔ get from db the least orders to populate historySection in frontend ("GET") @done(24-03-20 21:46)
     ☐ Deletion of an order especified by id ("DELETE")
     ☐ Update data inside of an order ("PUT")
     ☐ Update status of proccessing of an especified order by id ("PATCH")
