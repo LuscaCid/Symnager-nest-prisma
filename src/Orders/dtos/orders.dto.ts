@@ -1,4 +1,6 @@
 import { IsNotEmpty } from 'class-validator';
+import { Request } from 'express';
+import { UserInsideToken } from 'src/Clients/interfaces/token';
 import { PrismaService } from 'src/database/prisma.service';
 
 function defaultValue(valueFromInstantiate: string) {
@@ -22,21 +24,17 @@ export interface Tags {
   slug : string
 }
 
-
-export class OrderDTO {
-  @IsNotEmpty()
-  device: string;
-  @IsNotEmpty()
-  description: string;
-  tags: Tags [];
-  @defaultValue('PENDING')
-  status: string;
-  @IsNotEmpty({
-    message:
-      'O id precisa ser passsado para linkar um cliente a ordem de servico',
-  })
-  owner_id: number;
+export interface OrderDTO extends Request {
+  body : { 
+    device : string
+    description : string
+    tags : Array<string>
+    status : string
+    owner_id : number
+  }
+  user : UserInsideToken
 }
+
 //in frontend has an special section that links one client id to an order
 export type Order = OrderDTO & {
   order_id: number;

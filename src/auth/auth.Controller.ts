@@ -5,9 +5,10 @@ import {
   Req,
   UnauthorizedException,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { SkipAuth } from './config/contants';
+import { IS_PUBLIC_STEP, SkipAuth, skipStep } from './config/contants';
 import { RegisterBodyDTO } from 'src/auth/dtos/Regist-DTO';
 import { hash, compare } from 'bcryptjs';
 import { EmailLoginDTO } from 'src/auth/dtos/First-step-login';
@@ -20,12 +21,12 @@ export class AuthorizationController {
     private authService: AuthService,
     private readonly jwtService: JwtService,
   ) {}
-
+  @skipStep()
   @SkipAuth()
   @Post('/email')
   async createLogin(@Body() data: EmailLoginDTO) {
     const { email } = data;
-
+    
     const userFound = await this.authService.findByEmail(email, false);
     if (!userFound) throw new UnauthorizedException('Usuario nao encontrado!');
 
@@ -34,6 +35,7 @@ export class AuthorizationController {
       access_token: payload, //only email token, it cannot provide access to application for this user
     };
   }
+  @skipStep()
   @Post('/password')
   async signinPassword(@Req() PasswordDTO: PasswordDTO) {
     //password comes from body and token from header, but in middleware i'll inject inside request.user the payload after validating if is an email existing inside db
@@ -57,7 +59,7 @@ export class AuthorizationController {
       user: userAllData,
     };
   }
-
+  @skipStep()
   @SkipAuth() // i dont need to verify if token was passed in requisition cuz i want to register here
   @Post('/register')
   async createUser(@Body() data: RegisterBodyDTO) {
