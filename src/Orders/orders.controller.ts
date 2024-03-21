@@ -15,11 +15,10 @@ export class OrdersControllers {
 
   @HttpCode(200)
   @Get("view")
-  async viewOrdersQuery(@Query() q: string) {
-    const query = q
-    const response = await this.ordersService.getOrders(q)
+  async viewOrdersQuery(@Query() query: { q : string}) {
+    const response = await this.ordersService.getOrders(query.q)
     return { 
-      message : `valor da query ${query}`,
+      message : `valor da query `,
       data : response
     }
   }

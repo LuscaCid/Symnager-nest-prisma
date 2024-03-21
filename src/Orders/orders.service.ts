@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException, UploadedFile } from '@nestjs/
 import { ServiceModel, DeleteReturn, GetOrdersReturn, UpdateReturn } from './interfaces/service';
 import { OrderDTO, OrderReturn, Tags } from './dtos/orders.dto';
 import { PrismaService } from 'src/database/prisma.service';
+import { take } from 'rxjs';
 
 @Injectable()
 export class OrdersService implements ServiceModel {
@@ -10,28 +11,25 @@ export class OrdersService implements ServiceModel {
   public async createOrder(orderDTO: OrderDTO): Promise<OrderReturn> {
     const { 
       user : {user_id : id},
-      body : { description, device,owner_id,status,tags }
+      body : { description, device, owner_id, status, tags }
     } = orderDTO
-    const {} = orderDTO.body
-    console.log( device, owner_id )
     try {
       const orderResponse = await this.prismaService.orders.create({
         data : {
           description, 
           device, 
           status,
-          owner : {connect : {client_id : owner_id}},
-          created_by : {connect : { user_id  : id}} 
+          owner : { connect : { client_id : owner_id } },
+          created_by : { connect : { user_id  : id } } 
         }
       })
-      console.log("passed")
       if(tags.length == 0)return orderResponse
       for(const tag of tags) {
         try {
           await this.prismaService.tags.create({
             data : {
               slug : tag,
-              order : { connect : {order_id : orderResponse.order_id}}
+              order : { connect : {order_id : orderResponse.order_id} }
             }
           })
         } catch(e) {
@@ -42,7 +40,6 @@ export class OrdersService implements ServiceModel {
       return orderResponse
     } catch (e) {
       console.error(e)
-
       throw new InternalServerErrorException(e)
     }
   }
@@ -60,37 +57,36 @@ export class OrdersService implements ServiceModel {
   public async getOrders(q?: string): Promise<object> {
     let whereCondition : object | null = null
     if(q) {
-      whereCondition = {
-        where : {
-          OR : [
-            { description : {contains : q} },
-            { device : {contains : q} },
-            { status : {contains : q} }
-          ]
-        },
+      whereCondition = { where : {
+        OR : [
+        { description : {contains : q} },
+        { device : {contains : q} },
+        { status : {contains : q} }
+      ]
+    },
+    select : {
+      description : true,
+      arrived_at : true,
+      status : true,
+      owner : {
         select : {
-          description : true,
-          arrived_at : true,
-          status : true,
-          owner : {
-            select : {
-              name : true,
-            }
-          },
-          created_by : {
-            select : {
-              username : true,
-              email : true
-            },
+          name : true,
+        }
+      },
+      created_by : {
+        select : {
+          username : true,
+          email : true
+        },
 
-            tags : {
-              select : {
-                slug : true,
-                tag_id : true  
-              }
-            }
+        
+        },
+        tags : {
+          select : {
+            slug : true
           }
         }
+      }
       }
     } else {
       whereCondition = {
@@ -108,24 +104,24 @@ export class OrdersService implements ServiceModel {
               username : true,
               email : true
             },
-            tags : {
-              select : {
-                slug : true,
-                tag_id : true  
-              }
+          },
+          tags : {
+            select : {
+              slug : true,
+              tag_id : true  
             }
-            
           }
         },
           take: 20,
-          orderBy: { created_at: 'asc' },
+          orderBy: { arrived_at : 'asc' },
         }
     }
     
     try {
-      const findOrders = await this.prismaService.orders.findMany(whereCondition)
+      const findOrders = await this.prismaService.orders.findMany( whereCondition )
       return findOrders
     } catch(e) {
+      console.error(e)
       throw new InternalServerErrorException(e)
     }
 
