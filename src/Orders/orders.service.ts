@@ -7,7 +7,7 @@ import {
   DeleteReturn,
   UpdateReturn,
 } from './interfaces/service';
-import { OrderDTO, OrderReturn, Tags } from './dtos/orders.dto';
+import { OrderDTO, OrderReturn, UpdateOrderDTO, bodyOrderDTO } from './dtos/orders.dto';
 import { PrismaService } from 'src/database/prisma.service';
 
 @Injectable()
@@ -130,16 +130,13 @@ export class OrdersService implements ServiceModel {
       throw new InternalServerErrorException(e);
     }
   }
-  public async updateOrder(
-    updateData: OrderDTO,
-    id: number,
-  ): Promise<UpdateReturn> {
+  public async updateOrder( updateData:  bodyOrderDTO,): Promise<UpdateReturn> {
     const {
-      body: { description, device, status },
+       description, device, status , order_id
     } = updateData;
     try {
       const response = await this.prismaService.orders.update({
-        where: { order_id: id },
+        where: { order_id },
         data: {
           description,
           device,
@@ -167,6 +164,19 @@ export class OrdersService implements ServiceModel {
       return response;
     } catch (e) {
       throw new InternalServerErrorException(e);
+    }
+  }
+  public async redefineStatus({id, status : newStatus} : {id : number, status : string}) {
+    try{
+      const response = await this.prismaService.orders.update({
+        where : { order_id : Number(id)},
+        data : {
+          status : newStatus
+        }
+      })
+      return response;
+    } catch (e) {
+      throw new InternalServerErrorException(e)
     }
   }
 }

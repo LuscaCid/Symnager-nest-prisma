@@ -29,9 +29,11 @@ export interface OrderDTO extends Request {
     device: string;
     description: string;
     tags: Array<string>;
+    order_id : number
     status: string;
     owner_id: number;
   };
+  
   user: UserInsideToken;
 }
 
@@ -41,5 +43,8 @@ export type Order = OrderDTO & {
   arrived_at: Date;
   created_by_id: number;
 };
+
+export type UpdateOrderDTO = Partial<Order>
+export type bodyOrderDTO = UpdateOrderDTO["body"]
 const prisma = new PrismaService();
 export type OrderReturn = ReturnType<typeof prisma.orders.create>;

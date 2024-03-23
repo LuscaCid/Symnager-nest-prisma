@@ -1,13 +1,16 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   HttpCode,
+  Patch,
   Post,
+  Put,
   Query,
   Req,
 } from '@nestjs/common';
-import { OrderDTO } from './dtos/orders.dto';
+import { OrderDTO, UpdateOrderDTO } from './dtos/orders.dto';
 import { OrdersService } from './orders.service';
 
 @Controller('orders')
@@ -26,10 +29,10 @@ export class OrdersControllers {
   async viewOrdersQuery(@Query() query: { q: string }) {
     const response = await this.ordersService.getOrders(query.q);
     return {
-      message: `valor da query `,
       data: response,
     };
   }
+  @HttpCode(200)
   @Delete('/delete')
   async deleteOrder(@Req() orderID: string) {
     const response = await this.ordersService.deleteOrder(Number(orderID));
@@ -37,5 +40,23 @@ export class OrdersControllers {
       message: 'Excluido com sucesso',
       deletedObject: response,
     };
+  }
+  @HttpCode(204)
+  @Patch("status")
+  public async updateStatus(@Query() query : {id : number, newStatus : string}) {
+    const { id, newStatus } = query
+    const res = await this.ordersService.updateStatus({id, newStatus})
+    return {
+      response : res
+    }
+  }
+  @Put("update")
+  public async updateData(@Req() bodyData : UpdateOrderDTO) {
+    const { body } = bodyData
+    const response = await this.ordersService.updateOrder( body )
+    return {
+      message : "Atualizado",
+      response : response
+    }
   }
 }

@@ -1,5 +1,5 @@
 import { PrismaService } from 'src/database/prisma.service';
-import { Order, OrderDTO, OrderReturn } from '../dtos/orders.dto';
+import { Order, OrderDTO, OrderReturn, bodyOrderDTO } from '../dtos/orders.dto';
 
 export type DeleteReturn = ReturnType<typeof prisma.orders.delete>;
 export type createReturn = ReturnType<typeof prisma.orders.create>;
@@ -14,8 +14,7 @@ export abstract class ServiceModel {
   public abstract getOrders(q?: string): Promise<object>;
   public abstract deleteOrder(id: number): Promise<DeleteReturn>;
   public abstract updateOrder(
-    updateData: Partial<OrderDTO>,
-    id: number,
+    updateData: bodyOrderDTO,
   ): Promise<UpdateReturn>;
   public abstract updateStatus({
     newStatus,

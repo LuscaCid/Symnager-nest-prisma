@@ -8,7 +8,12 @@ import { OrdersModule } from './Orders/orders.module';
 import { VerifyUserInRequest } from './auth/revoke-request';
 
 @Module({
-  imports: [AuthModule, ClientModule, PrismaModule, OrdersModule],
+  imports: [
+    AuthModule, 
+    ClientModule, 
+    PrismaModule, 
+    OrdersModule
+  ],
   providers: [
     {
       provide: APP_GUARD,
