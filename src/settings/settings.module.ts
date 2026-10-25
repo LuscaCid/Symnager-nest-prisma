@@ -9,13 +9,14 @@ export class SettingsController {
 
   @Get()
   get() {
-    return this.settings.getAll();
+    return this.settings.getPublicView();
   }
 
   @Put()
   @Roles('ADMIN')
-  update(@Body() dto: UpdateSettingsDto) {
-    return this.settings.update(dto);
+  async update(@Body() dto: UpdateSettingsDto) {
+    await this.settings.update(dto);
+    return this.settings.getPublicView();
   }
 }
 

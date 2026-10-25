@@ -2,7 +2,7 @@
   "name": "symnager-api",
   "version": "1.0.0",
   "description": "API do Symnager (NestJS + Prisma + SQLite)",
-  "author": "",
+  "author": "Lucidev",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

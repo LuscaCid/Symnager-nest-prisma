@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { DEFAULT_SETTINGS, Settings, UpdateSettingsDto } from './settings.dto';
+import { loadConfig } from '../config/env';
+import {
+  APP_SIGNATURE,
+  DEFAULT_SETTINGS,
+  Settings,
+  UpdateSettingsDto,
+} from './settings.dto';
 
 type Db = PrismaService | Prisma.TransactionClient;
 
@@ -55,5 +61,13 @@ export class SettingsService {
       });
     }
     return this.getAll(db);
+  }
+
+  /** GET /settings: configurações + assinatura do software. */
+  async getPublicView() {
+    return {
+      ...(await this.getAll()),
+      app: { ...APP_SIGNATURE, version: loadConfig().version },
+    };
   }
 }

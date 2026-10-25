@@ -1,6 +1,7 @@
 # Symnager API
 
 API do Symnager (gestão de ordens de serviço para assistência técnica): NestJS 10 + Prisma 5 + SQLite.
+Desenvolvido por **Lucidev**.
 O contrato das rotas fica no repositório do frontend: `Symnager-tanstack-hookform/docs/API_CONTRACT.md`.
 
 ## Desenvolvimento

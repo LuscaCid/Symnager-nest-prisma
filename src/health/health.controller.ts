@@ -3,6 +3,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { PrismaService } from '../database/prisma.service';
 import { loadConfig } from '../config/env';
 import { Public } from '../common/decorators';
+import { APP_SIGNATURE } from '../settings/settings.dto';
 
 @Controller('health')
 export class HealthController {
@@ -22,6 +23,7 @@ export class HealthController {
     return {
       status: db === 'ok' ? 'ok' : 'degraded',
       version: config.version,
+      developer: APP_SIGNATURE.developer,
       db,
       mode: config.appMode,
       time: new Date().toISOString(),

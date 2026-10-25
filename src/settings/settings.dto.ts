@@ -106,3 +106,9 @@ export const DEFAULT_SETTINGS = {
 };
 
 export type Settings = typeof DEFAULT_SETTINGS;
+
+/** Assinatura do software (somente leitura, não é gravada em settings). */
+export const APP_SIGNATURE = {
+  name: 'Symnager',
+  developer: 'Lucidev',
+} as const;
