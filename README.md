@@ -28,6 +28,20 @@ e os cadastros auxiliares padrão.
 sem depender do CLI do Prisma. O registro em `_prisma_migrations` é compatível com `prisma migrate deploy`.
 Cada migração roda numa transação. Os arquivos `.sql` são mantidos com LF (`.gitattributes`) para o checksum bater.
 
+## Licença
+
+Sem licença válida todas as rotas respondem **402** `{ code: "LICENSE_REQUIRED", license_status }`,
+exceto `GET /api/health`, `/api/license/*` e `GET /api/backup/database` (os dados são do cliente).
+
+- `GET /api/license` — status (também em `GET /api/settings` → `license`)
+- `POST /api/license/activate { key }` — valida online em `symnager.plune.app.br` e guarda o token assinado
+- `POST /api/license/refresh` — check-in imediato · `POST /api/license/request` — pedido de licença
+- `DELETE /api/license` (ADMIN) — libera a vaga deste computador
+
+O token (Ed25519, chave pública em `src/license/license.keys.ts`) fica em `license.json`, ao lado do banco:
+sobrevive a restore e não viaja nos backups. É amarrado ao ID da máquina, renovado a cada 6 h e
+aceito offline por até 7 dias. O servidor e o painel estão no repositório `symnager-admin`.
+
 ## Variáveis de ambiente
 
 Veja `.env.example`. Obrigatória: `JWT_SECRET`. Opcional: `INTERNAL_TOKEN` (≥ 32 caracteres), que libera apenas

@@ -1,5 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  LICENSE_PUBLIC_KEY,
+  LICENSE_SERVER_URL,
+} from '../license/license.keys';
 
 // Raiz do projeto (pasta que contém package.json, prisma/ e dist/).
 // Funciona tanto em src/ (ts-node) quanto em dist/ (build).
@@ -23,6 +27,8 @@ export type AppConfig = {
   internalToken: string | null;
   isProduction: boolean;
   version: string;
+  licenseServerUrl: string;
+  licensePublicKey: string;
 };
 
 function bool(value: string | undefined, fallback: boolean): boolean {
@@ -143,6 +149,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     internalToken,
     isProduction: env.NODE_ENV === 'production',
     version: readVersion(),
+    // Sobrescritos só em desenvolvimento/testes (servidor de licenças local).
+    licenseServerUrl: (env.LICENSE_SERVER_URL || LICENSE_SERVER_URL).replace(
+      /\/+$/,
+      '',
+    ),
+    licensePublicKey: (env.LICENSE_PUBLIC_KEY || LICENSE_PUBLIC_KEY).replace(
+      /\\n/g,
+      '\n',
+    ),
   };
   return cached;
 }

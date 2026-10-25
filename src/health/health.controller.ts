@@ -4,12 +4,14 @@ import { PrismaService } from '../database/prisma.service';
 import { loadConfig } from '../config/env';
 import { Public } from '../common/decorators';
 import { APP_SIGNATURE } from '../settings/settings.dto';
+import { SkipLicense } from '../license/license.module';
 
 @Controller('health')
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Public()
+  @SkipLicense()
   @SkipThrottle()
   @Get()
   async check() {

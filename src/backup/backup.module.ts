@@ -23,6 +23,7 @@ import {
   Roles,
 } from '../common/decorators';
 import { BackupService } from './backup.service';
+import { SkipLicense } from '../license/license.module';
 
 class RestoreDto {
   @IsString() @IsNotEmpty() @MaxLength(200) password: string;
@@ -37,6 +38,8 @@ export class BackupController {
 
   @Get('database')
   @AllowInternalToken()
+  // Os dados são do cliente: o backup continua disponível mesmo sem licença.
+  @SkipLicense()
   async database(@CurrentUser() user: AuthUser, @Res() res: Response) {
     const { file, filename } = await this.backup.databaseSnapshot(
       user.internal ? 'BACKUP_AUTO' : 'BACKUP_DATABASE',

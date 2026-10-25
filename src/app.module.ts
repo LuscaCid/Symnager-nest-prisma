@@ -16,6 +16,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { PublicModule } from './public/public.module';
 import { BackupModule } from './backup/backup.module';
 import { HealthController } from './health/health.controller';
+import { LicenseGuard, LicenseModule } from './license/license.module';
 import { JwtAuthGuard, RolesGuard } from './common/guards';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 import { requestContext } from './common/request-context';
@@ -29,6 +30,7 @@ import { requestContext } from './common/request-context';
     PrismaModule,
     AuditModule,
     SettingsModule,
+    LicenseModule,
     AuthModule,
     UsersModule,
     ClientsModule,
@@ -42,8 +44,9 @@ import { requestContext } from './common/request-context';
   ],
   controllers: [HealthController],
   providers: [
-    // Ordem importa: rate limit -> autenticação -> papéis.
+    // Ordem importa: rate limit -> licença -> autenticação -> papéis.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useExisting: LicenseGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
