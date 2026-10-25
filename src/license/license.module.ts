@@ -98,6 +98,9 @@ class LicenseRequestDto {
   @Trim(false) @IsEmail() @MaxLength(150) email: string;
   @Trim(false) @IsString() @IsNotEmpty() @MaxLength(30) phone: string;
   @IsOptional() @Trim() @IsString() @MaxLength(1000) message?: string;
+  @IsOptional()
+  @IsIn(['VITALICIO', 'BASICO', 'INTERMEDIARIO', 'PRO'])
+  plan?: string;
 }
 
 class PlanRequestDto {
