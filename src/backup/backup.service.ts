@@ -16,6 +16,9 @@ import { AuthUser } from '../common/decorators';
 import { comparePassword } from '../common/password';
 import { USER_SELECT } from '../users/user.select';
 import { CsvColumn, toCsv } from './csv';
+import { SettingsService } from '../settings/settings.service';
+import { segmentProfile } from '../segments/segment-catalog';
+import { parseCustomFields } from '../orders/order.include';
 
 export const CSV_ENTITIES = [
   'clients',
@@ -45,6 +48,7 @@ export class BackupService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly settings: SettingsService,
   ) {}
 
   /** Gera uma cópia consistente do banco com VACUUM INTO e devolve o caminho temporário. */
@@ -274,6 +278,13 @@ export class BackupService {
         ]);
       }
       case 'orders': {
+        const { segment } = await this.settings.getAll();
+        const profile = segmentProfile(segment.id);
+        const L = profile.labels;
+        const extra = [
+          ...profile.equipment_fields,
+          ...segment.custom_fields.filter((f) => f.active !== false),
+        ];
         const rows = await p.orders.findMany({
           orderBy: { number: 'asc' },
           include: {
@@ -288,14 +299,25 @@ export class BackupService {
           ['Prioridade', (r) => r.priority],
           ['Cliente', (r) => r.owner.name],
           ['Técnico', (r) => r.technician?.name],
-          ['Equipamento', (r) => r.device],
-          ['Tipo', (r) => r.device_type],
-          ['Marca', (r) => r.brand],
-          ['Modelo', (r) => r.model],
-          ['Série', (r) => r.serial],
-          ['Defeito', (r) => r.description],
-          ['Diagnóstico', (r) => r.diagnosis],
-          ['Solução', (r) => r.solution],
+          [L.device, (r) => r.device],
+          [L.device_type, (r) => r.device_type],
+          [L.brand, (r) => r.brand],
+          [L.model, (r) => r.model],
+          [L.serial, (r) => r.serial],
+          ...extra.map(
+            (f): CsvColumn<(typeof rows)[number]> => [
+              f.label,
+              (r) => {
+                const v = parseCustomFields(r.custom_fields)[f.key];
+                return typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : v;
+              },
+            ],
+          ),
+          [L.service_address, (r) => r.service_address],
+          [L.scheduled_at, (r) => r.scheduled_at],
+          [L.description, (r) => r.description],
+          [L.diagnosis, (r) => r.diagnosis],
+          [L.solution, (r) => r.solution],
           ['Entrada', (r) => r.arrived_at],
           ['Previsão', (r) => r.due_date],
           ['Concluída', (r) => r.finished_at],

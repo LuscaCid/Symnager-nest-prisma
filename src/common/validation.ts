@@ -1,3 +1,4 @@
+import { registerDecorator, ValidationOptions } from 'class-validator';
 import {
   BadRequestException,
   ValidationError,
@@ -65,3 +66,34 @@ export const createValidationPipe = () =>
     transform: true,
     exceptionFactory: (errors) => new BadRequestException(flatten(errors)),
   });
+
+/** Valores dos campos adicionais da OS: { chave: texto | número | sim/não | null }. */
+export function IsCustomFields(options?: ValidationOptions) {
+  return (object: object, propertyName: string) =>
+    registerDecorator({
+      name: 'isCustomFields',
+      target: object.constructor,
+      propertyName,
+      options: {
+        message:
+          'custom_fields deve ser um objeto com até 20 campos (chaves a-z, 0-9 e _; textos de até 200 caracteres).',
+        ...options,
+      },
+      validator: {
+        validate(value: unknown) {
+          if (value === null || value === undefined) return true;
+          if (typeof value !== 'object' || Array.isArray(value)) return false;
+          const entries = Object.entries(value as Record<string, unknown>);
+          if (entries.length > 20) return false;
+          return entries.every(
+            ([key, v]) =>
+              /^[a-z0-9_]{1,30}$/.test(key) &&
+              (v === null ||
+                typeof v === 'boolean' ||
+                (typeof v === 'number' && Number.isFinite(v)) ||
+                (typeof v === 'string' && v.length <= 200)),
+          );
+        },
+      },
+    });
+}

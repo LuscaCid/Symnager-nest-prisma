@@ -33,7 +33,38 @@ export function serializeOrder<T extends Record<string, unknown>>(order: T): T {
   for (const key of ['payments', 'history'])
     if (key in out) out[key] = strip(out[key]);
   if ('checklist' in out) out.checklist = parseChecklist(out.checklist);
+  if ('custom_fields' in out)
+    out.custom_fields = parseCustomFields(out.custom_fields);
   return out as T;
+}
+
+export type CustomFieldValues = Record<
+  string,
+  string | number | boolean | null
+>;
+
+/** custom_fields é gravado como JSON (String) e sai da API como objeto. */
+export function parseCustomFields(value: unknown): CustomFieldValues {
+  if (typeof value !== 'string' || !value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Remove vazios; objeto sem valores vira null. */
+export function stringifyCustomFields(
+  values: CustomFieldValues | null | undefined,
+) {
+  if (!values) return null;
+  const kept = Object.entries(values).filter(
+    ([, v]) => v !== null && v !== undefined && v !== '',
+  );
+  return kept.length ? JSON.stringify(Object.fromEntries(kept)) : null;
 }
 
 /** checklist é gravado como JSON (String) e sai da API como array. */

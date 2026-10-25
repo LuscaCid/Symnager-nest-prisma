@@ -19,6 +19,8 @@ import { PlansModule } from './plans/plan-limits.service';
 import { PhotosModule } from './photos/photos.module';
 import { SyncModule } from './sync/sync.module';
 import { CloudModule } from './cloud/cloud.module';
+import { SegmentsModule } from './segments/segments.module';
+import { CertificatesModule } from './certificates/certificates.module';
 import { HealthController } from './health/health.controller';
 import { LicenseGuard, LicenseModule } from './license/license.module';
 import { JwtAuthGuard, RolesGuard } from './common/guards';
@@ -49,6 +51,8 @@ import { requestContext } from './common/request-context';
     PhotosModule,
     SyncModule,
     CloudModule,
+    SegmentsModule,
+    CertificatesModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -11,6 +11,7 @@ import { SettingsService } from '../settings/settings.service';
 import { loadConfig } from '../config/env';
 import { comparePassword, hashPassword } from '../common/password';
 import { lookupSeedRows } from '../lookups/lookup-seeds';
+import { SEGMENTS } from '../segments/segment-catalog';
 import { USER_SELECT } from '../users/user.select';
 import { JwtPayload } from '../common/guards';
 import { getRequestContext } from '../common/request-context';
@@ -61,15 +62,24 @@ export class AuthService {
         },
         select: USER_SELECT,
       });
-      for (const row of lookupSeedRows()) {
+      const segment = dto.segment ?? this.config.defaultSegment;
+      for (const row of lookupSeedRows(segment)) {
         await tx.lookups.upsert({
           where: { kind_name: { kind: row.kind, name: row.name } },
           create: row,
           update: {},
         });
       }
-      if (dto.company_name)
-        await this.settings.update({ company: { name: dto.company_name } }, tx);
+      await this.settings.setSegment(segment, tx);
+      await this.settings.update(
+        {
+          ...(dto.company_name && { company: { name: dto.company_name } }),
+          orders: {
+            default_warranty_days: SEGMENTS[segment].defaults.warranty_days,
+          },
+        },
+        tx,
+      );
       return created;
     });
     await this.audit.log({

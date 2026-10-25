@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { PlanLimitsService } from '../plans/plan-limits.service';
+import { SegmentLabels, segmentProfile } from '../segments/segment-catalog';
 import { SettingsService } from '../settings/settings.service';
 import { AuthUser } from '../common/decorators';
 import {
@@ -27,6 +28,7 @@ import {
   generateTrackingCode,
   serializeOrder,
   stringifyChecklist,
+  stringifyCustomFields,
 } from './order.include';
 import {
   CommentDto,
@@ -50,6 +52,7 @@ const TECHNICIAN_FIELDS = [
   'serial',
   'condition',
   'checklist',
+  'custom_fields',
 ];
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -101,6 +104,7 @@ export class OrdersService {
               'total',
               'updated_at',
               'device',
+              'scheduled_at',
             ],
             { arrived_at: 'desc' },
           ),
@@ -146,7 +150,16 @@ export class OrdersService {
     if (settings.orders.require_technician && !dto.technician_id) {
       throw new BadRequestException('Informe o técnico responsável.');
     }
-    const { items, tags, due_date, arrived_at, checklist, ...fields } = dto;
+    const {
+      items,
+      tags,
+      due_date,
+      arrived_at,
+      checklist,
+      scheduled_at,
+      custom_fields,
+      ...fields
+    } = dto;
 
     const orderId = await withUniqueRetry(() =>
       this.prisma.$transaction(async (tx) => {
@@ -166,6 +179,8 @@ export class OrdersService {
             due_date: due_date ? new Date(due_date) : null,
             ...(arrived_at && { arrived_at: new Date(arrived_at) }),
             checklist: stringifyChecklist(checklist),
+            scheduled_at: scheduled_at ? new Date(scheduled_at) : null,
+            custom_fields: stringifyCustomFields(custom_fields),
             tags: tags?.length
               ? { create: uniqueTags(tags).map((slug) => ({ slug })) }
               : undefined,
@@ -175,6 +190,10 @@ export class OrdersService {
           to_status: order.status,
           message: 'OS criada.',
         });
+        if (order.scheduled_at)
+          await this.history(tx, order.order_id, user, 'SCHEDULE', {
+            message: `Visita agendada para ${formatDateTime(order.scheduled_at)}.`,
+          });
         for (const item of items ?? [])
           await this.insertItem(tx, order.order_id, item, user, false);
         await this.recalc(tx, order.order_id);
@@ -202,7 +221,18 @@ export class OrdersService {
       );
     }
 
-    const { tags, due_date, arrived_at, checklist, ...fields } = dto;
+    const {
+      tags,
+      due_date,
+      arrived_at,
+      checklist,
+      scheduled_at,
+      custom_fields,
+      ...fields
+    } = dto;
+    const labels = segmentProfile(
+      (await this.settings.getAll()).segment.id,
+    ).labels;
     await this.prisma.$transaction(async (tx) => {
       if (dto.owner_id && dto.owner_id !== current.owner_id)
         await this.ensureClient(tx, dto.owner_id);
@@ -219,6 +249,12 @@ export class OrdersService {
           ...(arrived_at && { arrived_at: new Date(arrived_at) }),
           ...(checklist !== undefined && {
             checklist: stringifyChecklist(checklist),
+          }),
+          ...(scheduled_at !== undefined && {
+            scheduled_at: scheduled_at ? new Date(scheduled_at) : null,
+          }),
+          ...(custom_fields !== undefined && {
+            custom_fields: stringifyCustomFields(custom_fields),
           }),
           ...(dto.warranty_days !== undefined &&
             current.delivered_at && {
@@ -238,8 +274,26 @@ export class OrdersService {
         }
       }
       if (dto.discount !== undefined) await this.recalc(tx, id);
-      const changed = Object.keys(dto).filter((k) => k !== 'device_password');
-      if (dto.device_password !== undefined) changed.push('senha do aparelho');
+      const changed = Object.keys(dto)
+        .filter((k) => k !== 'scheduled_at')
+        .map((k) => fieldLabel(k, labels));
+      const newSchedule =
+        scheduled_at === undefined
+          ? undefined
+          : scheduled_at
+            ? new Date(scheduled_at)
+            : null;
+      if (
+        newSchedule !== undefined &&
+        (newSchedule?.getTime() ?? null) !==
+          (current.scheduled_at?.getTime() ?? null)
+      ) {
+        await this.history(tx, id, user, 'SCHEDULE', {
+          message: newSchedule
+            ? `Visita agendada para ${formatDateTime(newSchedule)}.`
+            : 'Agendamento da visita removido.',
+        });
+      }
       if (changed.length) {
         await this.history(tx, id, user, 'UPDATE', {
           message: `Campos alterados: ${changed.join(', ')}.`,
@@ -675,6 +729,14 @@ function buildWhere(query: OrdersQueryDto): Prisma.ordersWhereInput {
       },
     });
   }
+  if (query.scheduled_from || query.scheduled_to) {
+    and.push({
+      scheduled_at: {
+        ...(query.scheduled_from && { gte: new Date(query.scheduled_from) }),
+        ...(query.scheduled_to && { lte: endOfDayIfDate(query.scheduled_to) }),
+      },
+    });
+  }
   if (query.overdue) {
     and.push({
       due_date: { lt: new Date() },
@@ -691,6 +753,8 @@ function buildWhere(query: OrdersQueryDto): Prisma.ordersWhereInput {
         { serial: { contains: q } },
         { brand: { contains: q } },
         { model: { contains: q } },
+        { service_address: { contains: q } },
+        { custom_fields: { contains: q } },
         { tracking_code: q.toUpperCase() },
         { owner: { name: { contains: q } } },
         ...(numberMatch ? [{ number: Number(numberMatch[1]) }] : []),
@@ -698,6 +762,32 @@ function buildWhere(query: OrdersQueryDto): Prisma.ordersWhereInput {
     });
   }
   return and.length ? { AND: and } : {};
+}
+
+/** Nome legível do campo no histórico, com os rótulos do ramo ativo. */
+function fieldLabel(key: string, labels: SegmentLabels): string {
+  const fixed: Record<string, string> = {
+    owner_id: 'cliente',
+    technician_id: 'técnico',
+    due_date: 'previsão',
+    priority: 'prioridade',
+    warranty_days: 'garantia',
+    internal_notes: 'observações internas',
+    discount: 'desconto',
+    arrived_at: 'data de entrada',
+    tags: 'etiquetas',
+    custom_fields: 'campos adicionais',
+  };
+  const fromSegment = (labels as unknown as Record<string, string>)[key];
+  return (fixed[key] ?? fromSegment ?? key).toLowerCase();
+}
+
+function formatDateTime(date: Date) {
+  return date.toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: process.env.TZ || 'America/Sao_Paulo',
+  });
 }
 
 /** Repete quando duas OS simultâneas disputam o mesmo `number` (P2002). */

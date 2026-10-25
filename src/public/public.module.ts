@@ -5,6 +5,8 @@ import {
   NotFoundException,
   Param,
 } from '@nestjs/common';
+import { segmentProfile } from '../segments/segment-catalog';
+import { OrderStatus } from '../common/enums';
 import { Throttle } from '@nestjs/throttler';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
@@ -34,11 +36,19 @@ export class PublicController {
         arrived_at: true,
         finished_at: true,
         delivered_at: true,
+        scheduled_at: true,
       },
     });
     if (!order) throw new NotFoundException('OS não encontrada.');
-    const { company } = await this.settings.getAll();
-    return { ...order, company: { name: company.name, phone: company.phone } };
+    const { company, segment } = await this.settings.getAll();
+    const profile = segmentProfile(segment.id);
+    // Endereço do atendimento não sai aqui: o link de rastreio é compartilhável.
+    return {
+      ...order,
+      equipment_label: profile.labels.device,
+      status_label: profile.status_labels[order.status as OrderStatus] ?? null,
+      company: { name: company.name, phone: company.phone },
+    };
   }
 }
 

@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -12,6 +14,13 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import {
+  CustomFieldDef,
+  DEFAULT_SEGMENT,
+  SegmentId,
+} from '../segments/segment-catalog';
+
+export const MAX_CUSTOM_FIELDS = 6;
 
 // Data URL de imagem com até ~300 KB de conteúdo (base64 ≈ 4/3 do tamanho).
 const LOGO_MAX_CHARS = 410_000;
@@ -56,6 +65,55 @@ class OrderSettingsDto {
   public_url?: string;
 }
 
+class CustomFieldDto {
+  @IsString()
+  @Matches(/^cf_[a-z0-9_]{1,27}$/, {
+    message:
+      'A chave do campo deve começar com cf_ e ter letras minúsculas, números ou _.',
+  })
+  key: string;
+  @IsString() @MaxLength(40) label: string;
+  @IsIn(['text', 'number', 'select', 'date', 'boolean'])
+  type: 'text' | 'number' | 'select' | 'date' | 'boolean';
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  options?: string[];
+  @IsOptional() @IsString() @MaxLength(15) unit?: string;
+  @IsOptional() @IsBoolean() show_on_reception?: boolean;
+  @IsOptional() @IsBoolean() show_on_print?: boolean;
+  @IsOptional() @IsBoolean() active?: boolean;
+}
+
+/** O ramo (id) só muda por POST /segments/apply, que também semeia as listas. */
+class SegmentSettingsDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_CUSTOM_FIELDS, {
+    message: `Use no máximo ${MAX_CUSTOM_FIELDS} campos adicionais.`,
+  })
+  @ValidateNested({ each: true })
+  @Type(() => CustomFieldDto)
+  custom_fields?: CustomFieldDto[];
+  /** null = padrão do ramo. */
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
+  @IsBoolean()
+  on_site?: boolean | null;
+}
+
+class CertificateSettingsDto {
+  @IsOptional() @IsString() @MaxLength(10) prefix?: string;
+  @IsOptional() @IsString() @MaxLength(120) responsible_name?: string;
+  @IsOptional() @IsString() @MaxLength(60) responsible_registry?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(36) hygiene_months?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(36) preventive_months?: number;
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
+  @IsOptional() @IsBoolean() show_qrcode?: boolean;
+}
+
 class PrintSettingsDto {
   @IsOptional() @IsIn(['A4', 'THERMAL']) layout?: 'A4' | 'THERMAL';
   @IsOptional() @IsInt() @Min(1) @Max(5) copies?: number;
@@ -76,6 +134,14 @@ export class UpdateSettingsDto {
   @ValidateNested()
   @Type(() => PrintSettingsDto)
   print?: PrintSettingsDto;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SegmentSettingsDto)
+  segment?: SegmentSettingsDto;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CertificateSettingsDto)
+  certificates?: CertificateSettingsDto;
 }
 
 export const DEFAULT_SETTINGS = {
@@ -102,6 +168,23 @@ export const DEFAULT_SETTINGS = {
     copies: 1,
     show_qrcode: true,
     show_prices: true,
+  },
+  segment: {
+    id: DEFAULT_SEGMENT as SegmentId,
+    /** Ramos cujas listas já foram aplicadas. */
+    applied: [] as SegmentId[],
+    custom_fields: [] as CustomFieldDef[],
+    on_site: null as boolean | null,
+  },
+  certificates: {
+    prefix: 'CERT',
+    responsible_name: '',
+    responsible_registry: '',
+    hygiene_months: 6,
+    preventive_months: 3,
+    /** Texto livre impresso no rodapé dos certificados. */
+    notes: '',
+    show_qrcode: true,
   },
 };
 

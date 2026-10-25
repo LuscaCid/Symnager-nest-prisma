@@ -28,6 +28,8 @@ import {
 } from '../common/enums';
 import { PaginationQueryDto } from '../common/pagination';
 import { CsvToArray, ToBoolean, Trim } from '../common/transforms';
+import { IsCustomFields } from '../common/validation';
+import { CustomFieldValues } from './order.include';
 
 /** Item do checklist de entrada; `ok` null = não verificado. */
 export class ChecklistItemDto {
@@ -73,6 +75,13 @@ export class CreateOrderDto {
   @IsOptional() @Trim() @IsString() @MaxLength(100) device_password?:
     | string
     | null;
+  @IsOptional() @Trim() @IsString() @MaxLength(300) service_address?:
+    | string
+    | null;
+  @IsOptional() @ValidateIf((_o, v) => v !== null) @IsISO8601() scheduled_at?:
+    | string
+    | null;
+  @IsOptional() @IsCustomFields() custom_fields?: CustomFieldValues | null;
   @IsOptional() @IsIn(PRIORITIES) priority?: Priority;
   @IsOptional() @ValidateIf((_o, v) => v !== null) @IsInt() technician_id?:
     | number
@@ -151,4 +160,7 @@ export class OrdersQueryDto extends PaginationQueryDto {
   @IsOptional() @IsISO8601() to?: string;
   @IsOptional() @ToBoolean() @IsBoolean() overdue?: boolean;
   @IsOptional() @IsString() @MaxLength(40) tag?: string;
+  /** Visitas agendadas no intervalo. */
+  @IsOptional() @IsISO8601() scheduled_from?: string;
+  @IsOptional() @IsISO8601() scheduled_to?: string;
 }

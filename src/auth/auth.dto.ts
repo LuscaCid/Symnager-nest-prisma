@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -9,6 +10,7 @@ import {
 } from 'class-validator';
 import { PASSWORD_MESSAGE, PASSWORD_REGEX } from '../common/password';
 import { Lowercase, Trim } from '../common/transforms';
+import { SEGMENT_IDS, SegmentId } from '../segments/segment-catalog';
 
 export const USERNAME_REGEX = /^[a-z0-9._-]{3,40}$/;
 export const USERNAME_MESSAGE =
@@ -25,6 +27,8 @@ export class SetupDto {
   @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
   password: string;
   @IsOptional() @Trim() @IsString() @MaxLength(150) company_name?: string;
+  /** Ramo de atuação; sem ele vale o padrão do instalador (DEFAULT_SEGMENT). */
+  @IsOptional() @IsIn(SEGMENT_IDS) segment?: SegmentId;
 }
 
 export class LoginDto {

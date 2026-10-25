@@ -33,6 +33,8 @@ export const HISTORY_TYPES = [
   'FAILURE',
   'UPDATE',
   'PRINT',
+  'SCHEDULE',
+  'CERTIFICATE',
 ] as const;
 export type HistoryType = (typeof HISTORY_TYPES)[number];
 

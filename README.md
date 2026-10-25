@@ -42,6 +42,20 @@ O token (Ed25519, chave pública em `src/license/license.keys.ts`) fica em `lice
 sobrevive a restore e não viaja nos backups. É amarrado ao ID da máquina, renovado a cada 6 h e
 aceito offline por até 7 dias. O servidor e o painel estão no repositório `symnager-admin`.
 
+## Ramos de atuação
+
+O catálogo `src/segments/segment-catalog.ts` define os ramos `CELULAR_INFORMATICA` (padrão), `AR_CONDICIONADO`,
+`ELETRODOMESTICOS` e `SERVICOS_GERAIS`: rótulos, campos visíveis, listas iniciais (seeds), status, mensagens,
+campos do equipamento (BTU, gás...) e recursos (atendimento no local, certificados). O banco é o mesmo para todos.
+
+- `DEFAULT_SEGMENT` (env, vindo do instalador) define o ramo na configuração inicial; `POST /api/auth/setup` aceita `segment`.
+- `GET /api/segments` (público), `GET /api/segments/:id/preview` e `POST /api/segments/apply` (ADMIN): trocar de ramo
+  só acrescenta itens às listas.
+- `GET /api/settings` devolve `segment_profile` (perfil do ramo ativo), `segment` (campos da empresa, até 6) e `certificates`.
+- OS: `service_address`, `scheduled_at`, `custom_fields` (JSON).
+- Certificados (ar-condicionado): `/api/orders/:id/certificates`, `/api/certificates`, verificação em
+  `/api/public/certificates/:code`.
+
 ## Planos e nuvem
 
 | Plano | Preço | Nuvem | Usuários | OS/mês | Espaço | Fotos/OS | Computadores |

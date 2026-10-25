@@ -40,6 +40,7 @@ model users {
   stock_movements   stock_movements[]
   audit_logs        audit_logs[]
   photos            order_photos[]
+  certificates      certificates[]
 }
 
 model sessions {
@@ -106,6 +107,9 @@ model orders {
   condition       String?
   device_password String?
   checklist       String? // JSON: [{ item, ok: boolean | null, note? }]
+  service_address String? // atendimento no local (ramos com visita)
+  scheduled_at    DateTime?
+  custom_fields   String? // JSON: { chave: valor } (campos do ramo e da empresa)
   description     String
   diagnosis       String?
   solution        String?
@@ -131,8 +135,10 @@ model orders {
   failures        delivery_failures[]
   stock_movements stock_movements[]
   photos          order_photos[]
+  certificates    certificates[]
 
   @@index([status])
+  @@index([scheduled_at])
   @@index([owner_id])
   @@index([technician_id])
   @@index([arrived_at])
@@ -329,4 +335,35 @@ model order_photos {
   created_at    DateTime @default(now())
 
   @@index([order_id])
+}
+
+/// Certificado de higienização / relatório de manutenção preventiva (ar-condicionado).
+/// Imutável: corrigir = cancelar e emitir outro.
+model certificates {
+  certificate_id      Int       @id @default(autoincrement())
+  number              Int       @unique
+  type                String // HIGIENIZACAO | MANUTENCAO_PREVENTIVA
+  verification_code   String    @unique
+  status              String    @default("VALIDO") // VALIDO | CANCELADO
+  order               orders    @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  order_id            Int
+  issued_by           users?    @relation(fields: [issued_by_id], references: [user_id], onDelete: SetNull)
+  issued_by_id        Int?
+  performed_at        DateTime
+  next_service_at     DateTime?
+  technician_name     String
+  technician_registry String?
+  equipment           String // JSON: [{ device, device_type, brand, model, serial, btu, gas, ambiente }]
+  checklist           String // JSON: [{ item, ok, note? }]
+  products            String? // JSON: [{ name, registry?, batch? }]
+  measurements        String? // JSON: { pressure_psi, current_a, supply_c, return_c, voltage_v }
+  notes               String?
+  client_snapshot     String // JSON: { name, document, phone, address }
+  company_snapshot    String // JSON: { name, document, phone, email, address }
+  canceled_at         DateTime?
+  cancel_reason       String?
+  created_at          DateTime  @default(now())
+
+  @@index([order_id])
+  @@index([next_service_at])
 }

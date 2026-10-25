@@ -1,6 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  DEFAULT_SEGMENT,
+  isSegmentId,
+  SegmentId,
+} from '../segments/segment-catalog';
+import {
   LICENSE_PUBLIC_KEY,
   LICENSE_SERVER_URL,
 } from '../license/license.keys';
@@ -32,6 +37,8 @@ export type AppConfig = {
   version: string;
   licenseServerUrl: string;
   licensePublicKey: string;
+  /** Ramo padrão do instalador (usado só na configuração inicial). */
+  defaultSegment: SegmentId;
 };
 
 function bool(value: string | undefined, fallback: boolean): boolean {
@@ -158,6 +165,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       /\/+$/,
       '',
     ),
+    defaultSegment: isSegmentId(env.DEFAULT_SEGMENT)
+      ? env.DEFAULT_SEGMENT
+      : DEFAULT_SEGMENT,
     licensePublicKey: (env.LICENSE_PUBLIC_KEY || LICENSE_PUBLIC_KEY).replace(
       /\\n/g,
       '\n',
