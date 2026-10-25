@@ -20,7 +20,8 @@ async function bootstrap() {
   process.env.DATABASE_URL = `file:${config.databaseFile.replace(/\\/g, '/')}`;
   fs.mkdirSync(path.dirname(config.databaseFile), { recursive: true });
 
-  if (config.runMigrations) {
+  // Na nuvem cada cliente tem o próprio banco, migrado quando é aberto.
+  if (config.runMigrations && config.appMode !== 'cloud') {
     const { runMigrations } = await import('./database/migrator');
     const applied = await runMigrations(
       process.env.DATABASE_URL,
@@ -63,6 +64,7 @@ async function bootstrap() {
       'Authorization',
       'X-Requested-With',
       'X-Internal-Token',
+      'X-Symnager-License',
     ],
     exposedHeaders: ['Content-Disposition'],
   });

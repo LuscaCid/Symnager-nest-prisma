@@ -39,6 +39,7 @@ model users {
   failures_tech     delivery_failures[] @relation("failure_technician")
   stock_movements   stock_movements[]
   audit_logs        audit_logs[]
+  photos            order_photos[]
 }
 
 model sessions {
@@ -129,6 +130,7 @@ model orders {
   history         order_history[]
   failures        delivery_failures[]
   stock_movements stock_movements[]
+  photos          order_photos[]
 
   @@index([status])
   @@index([owner_id])
@@ -310,4 +312,21 @@ model audit_logs {
   created_at DateTime @default(now())
 
   @@index([created_at])
+}
+
+/// Fotos do aparelho anexadas à OS. O arquivo fica em <dados>/photos/<order_id>/<file_name>.
+model order_photos {
+  photo_id      Int      @id @default(autoincrement())
+  order         orders   @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  order_id      Int
+  file_name     String   @unique
+  original_name String?
+  mime          String
+  size          Int
+  caption       String?
+  user          users?   @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
+  user_id       Int?
+  created_at    DateTime @default(now())
+
+  @@index([order_id])
 }

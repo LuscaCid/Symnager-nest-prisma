@@ -25,6 +25,8 @@ export type JwtPayload = {
   username: string;
   role: Role;
   sid?: number;
+  /** Nuvem: cliente dono da sessão. Tem de bater com a licença da requisição. */
+  tid?: number;
 };
 
 /** Compara o header com INTERNAL_TOKEN em tempo constante. Sem o env, sempre falso. */
@@ -84,6 +86,11 @@ export class JwtAuthGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Token inválido ou expirado.');
     }
+    const tenant = getRequestContext().tenant;
+    if (tenant && payload.tid !== tenant.id)
+      throw new UnauthorizedException(
+        'Sessão de outra empresa. Entre novamente.',
+      );
 
     // Recarrega o usuário para que desativação/troca de papel valham na hora.
     const user = await this.prisma.users.findUnique({

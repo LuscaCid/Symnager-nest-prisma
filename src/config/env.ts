@@ -20,7 +20,10 @@ export type AppConfig = {
   refreshTtlDays: number;
   corsOrigins: string[];
   trustProxy: boolean;
-  appMode: 'local' | 'server';
+  /** cloud = multi-tenant (um banco por cliente, licença em cada requisição). */
+  appMode: 'local' | 'server' | 'cloud';
+  /** Pasta dos dados: fotos (local/server) e bancos dos clientes (cloud). */
+  dataDir: string;
   runMigrations: boolean;
   migrationsDir: string;
   cookieSecure: boolean;
@@ -105,8 +108,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   if (!(refreshTtlDays > 0)) errors.push('REFRESH_TTL_DAYS inválido.');
 
   const appMode = (env.APP_MODE || 'server') as AppConfig['appMode'];
-  if (!['local', 'server'].includes(appMode))
-    errors.push('APP_MODE deve ser "local" ou "server".');
+  if (!['local', 'server', 'cloud'].includes(appMode))
+    errors.push('APP_MODE deve ser "local", "server" ou "cloud".');
 
   const databaseUrl = env.DATABASE_URL || 'file:./dev.db';
   let databaseFile = '';
@@ -132,6 +135,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     host: env.HOST || '127.0.0.1',
     databaseUrl,
     databaseFile,
+    dataDir: path.resolve(env.DATA_DIR || path.dirname(databaseFile || '.')),
     jwtSecret,
     jwtExpiresIn,
     jwtExpiresInSeconds,

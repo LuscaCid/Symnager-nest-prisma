@@ -4,7 +4,7 @@ import { PrismaService } from '../database/prisma.service';
 import { loadConfig } from '../config/env';
 import { Public } from '../common/decorators';
 import { APP_SIGNATURE } from '../settings/settings.dto';
-import { SkipLicense } from '../license/license.module';
+import { CloudOpen, SkipLicense } from '../license/license.module';
 
 @Controller('health')
 export class HealthController {
@@ -12,13 +12,15 @@ export class HealthController {
 
   @Public()
   @SkipLicense()
+  @CloudOpen()
   @SkipThrottle()
   @Get()
   async check() {
     const config = loadConfig();
     let db = 'ok';
     try {
-      await this.prisma.$queryRawUnsafe('SELECT 1');
+      if (config.appMode !== 'cloud')
+        await this.prisma.$queryRawUnsafe('SELECT 1');
     } catch {
       db = 'error';
     }

@@ -13,6 +13,7 @@ import { comparePassword, hashPassword } from '../common/password';
 import { lookupSeedRows } from '../lookups/lookup-seeds';
 import { USER_SELECT } from '../users/user.select';
 import { JwtPayload } from '../common/guards';
+import { getRequestContext } from '../common/request-context';
 import { LoginDto, SetupDto } from './auth.dto';
 
 export const MAX_FAILED_ATTEMPTS = 5;
@@ -240,6 +241,7 @@ export class AuthService {
       username: user.username,
       role: user.role as JwtPayload['role'],
       sid: session.session_id,
+      ...(getRequestContext().tenant && { tid: getRequestContext().tenant.id }),
     };
     return {
       access_token: await this.jwt.signAsync(payload),

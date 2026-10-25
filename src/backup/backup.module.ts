@@ -84,5 +84,6 @@ export class BackupController {
 @Module({
   controllers: [BackupController],
   providers: [BackupService],
+  exports: [BackupService],
 })
 export class BackupModule {}

@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { PlanLimitsService } from '../plans/plan-limits.service';
 import { AuthUser } from '../common/decorators';
 import { orderByFrom, paginate } from '../common/pagination';
 import { comparePassword, hashPassword } from '../common/password';
@@ -24,6 +25,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly limits: PlanLimitsService,
   ) {}
 
   async list(query: UsersQueryDto, viewer: AuthUser) {
@@ -67,6 +69,7 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto) {
+    await this.limits.assertCanAddUser();
     await this.ensureUnique(dto.username, dto.email);
     const user = await this.prisma.users.create({
       data: { ...dto, password: await hashPassword(dto.password) },
@@ -84,6 +87,8 @@ export class UsersService {
   async update(id: number, dto: UpdateUserDto, actor: AuthUser) {
     const current = await this.findById(id);
     await this.ensureUnique(dto.username, dto.email, id);
+    if (dto.active === true && !current.active)
+      await this.limits.assertCanAddUser();
 
     const losesAdmin =
       current.role === 'ADMIN' &&

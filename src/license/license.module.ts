@@ -18,18 +18,33 @@ import { Reflector } from '@nestjs/core';
 import { Throttle } from '@nestjs/throttler';
 import {
   IsEmail,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
 } from 'class-validator';
 import { Trim } from '../common/transforms';
-import { Public, Roles } from '../common/decorators';
+import {
+  AllowInternalToken,
+  AuthUser,
+  CurrentUser,
+  Public,
+  Roles,
+} from '../common/decorators';
+import { loadConfig } from '../config/env';
+import { CloudAccess } from '../cloud/cloud-access';
 import { LicenseService } from './license.service';
 
 export const SKIP_LICENSE_KEY = 'skipLicense';
 /** Rota que funciona sem licença válida (health, ativação, backup dos dados do cliente). */
 export const SkipLicense = () => SetMetadata(SKIP_LICENSE_KEY, true);
+
+export const CLOUD_OPEN_KEY = 'cloudOpen';
+/** Na nuvem, só estas rotas dispensam a licença do cliente (health). */
+export const CloudOpen = () => SetMetadata(CLOUD_OPEN_KEY, true);
+
+const isCloud = () => loadConfig().appMode === 'cloud';
 
 /**
  * Primeiro guard depois do rate limit: sem licença válida nenhuma rota responde.
@@ -40,9 +55,19 @@ export class LicenseGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly license: LicenseService,
+    private readonly cloud: CloudAccess,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (isCloud()) {
+      const open = this.reflector.getAllAndOverride<boolean>(CLOUD_OPEN_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
+      if (!open)
+        await this.cloud.authorize(context.switchToHttp().getRequest());
+      return true;
+    }
     const skip = this.reflector.getAllAndOverride<boolean>(SKIP_LICENSE_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -73,6 +98,14 @@ class LicenseRequestDto {
   @Trim(false) @IsEmail() @MaxLength(150) email: string;
   @Trim(false) @IsString() @IsNotEmpty() @MaxLength(30) phone: string;
   @IsOptional() @Trim() @IsString() @MaxLength(1000) message?: string;
+}
+
+class PlanRequestDto {
+  @IsString()
+  @IsIn(['VITALICIO', 'BASICO', 'INTERMEDIARIO', 'PRO'])
+  plan: string;
+  @IsOptional() @Trim() @IsString() @MaxLength(1000) message?: string;
+  @IsOptional() @Trim() @IsString() @MaxLength(150) contact?: string;
 }
 
 @SkipLicense()
@@ -112,6 +145,31 @@ export class LicenseController {
     return this.license.request({ ...dto });
   }
 
+  @Roles('ADMIN')
+  @Get('plan-request')
+  pendingPlanRequest() {
+    return this.license.planRequest(null);
+  }
+
+  @Roles('ADMIN')
+  @Post('plan-request')
+  @Throttle({ default: { ttl: 3_600_000, limit: 5 } })
+  planRequest(@Body() dto: PlanRequestDto) {
+    return this.license.planRequest({ ...dto });
+  }
+
+  /** Token assinado, só para o processo principal do Electron repassar à nuvem. */
+  @AllowInternalToken()
+  @Get('token')
+  token(@CurrentUser() user: AuthUser) {
+    if (!user?.internal)
+      throw new HttpException(
+        { statusCode: 403, message: 'Rota interna.' },
+        HttpStatus.FORBIDDEN,
+      );
+    return { token: this.license.currentToken() };
+  }
+
   /** Libera a vaga deste computador (trocar de máquina). */
   @Roles('ADMIN')
   @Delete()
@@ -122,8 +180,9 @@ export class LicenseController {
 
 @Global()
 @Module({
-  controllers: [LicenseController],
-  providers: [LicenseService, LicenseGuard],
-  exports: [LicenseService, LicenseGuard],
+  // Na nuvem a licença vem em cada requisição: as rotas da instalação não existem.
+  controllers: isCloud() ? [] : [LicenseController],
+  providers: [LicenseService, LicenseGuard, CloudAccess],
+  exports: [LicenseService, LicenseGuard, CloudAccess],
 })
 export class LicenseModule {}

@@ -42,6 +42,29 @@ O token (Ed25519, chave pública em `src/license/license.keys.ts`) fica em `lice
 sobrevive a restore e não viaja nos backups. É amarrado ao ID da máquina, renovado a cada 6 h e
 aceito offline por até 7 dias. O servidor e o painel estão no repositório `symnager-admin`.
 
+## Planos e nuvem
+
+| Plano | Preço | Nuvem | Usuários | OS/mês | Espaço | Fotos/OS | Computadores |
+|---|---|---|---|---|---|---|---|
+| Vitalício | R$ 74,90 único | não (só banco local) | ilimitado | ilimitado | disco do PC | 10 | 1 |
+| Básico | R$ 18,90/mês | sim | 2 | 80 | 2 GB | 4 | 2 |
+| Intermediário | R$ 34,90/mês | sim | 5 | 300 | 10 GB | 8 | 5 |
+| Pro | R$ 49,90/mês | sim | 12 | ilimitado | 30 GB | 15 | 12 |
+
+Catálogo em `src/plans/plans.ts` (o mesmo do servidor de licenças, que assina os limites no token).
+
+- `APP_MODE=cloud`: multi-tenant. O guard de licença lê `X-Symnager-License`, confere a assinatura, recusa
+  planos sem nuvem (`403 PLAN_NO_CLOUD`) e tokens com mais de 24 h (`CLOUD_LICENSE_STALE`), e abre o banco do
+  cliente em `DATA_DIR/tenants/<id>/symnager.db` (migrado no primeiro acesso). O `PrismaService` vira um proxy
+  para o banco do tenant da requisição; o JWT carrega `tid` e só vale para o mesmo tenant.
+- Limites (`403 PLAN_LIMIT`): usuários ativos, OS no mês, espaço (banco + fotos) e fotos por OS; requisições por
+  minuto por cliente (`429 PLAN_RATE_LIMIT`).
+- Fotos da OS: `GET/POST /api/orders/:id/photos`, `GET .../:photoId/file`, `DELETE .../:photoId` (JPEG/PNG/WebP até 5 MB,
+  tipo conferido pelo conteúdo).
+- Sincronização: `GET /api/sync/export` (nuvem, ADMIN) gera um tar com o banco e as fotos; `POST /api/sync/import`
+  (desktop, só `x-internal-token`) troca o banco local e as fotos, com cópia de segurança e rollback.
+- Deploy da nuvem: [deploy/cloud/README.md](deploy/cloud/README.md).
+
 ## Variáveis de ambiente
 
 Veja `.env.example`. Obrigatória: `JWT_SECRET`. Opcional: `INTERNAL_TOKEN` (≥ 32 caracteres), que libera apenas

@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { PlanLimitsService } from '../plans/plan-limits.service';
 import { SettingsService } from '../settings/settings.service';
 import { AuthUser } from '../common/decorators';
 import {
@@ -74,6 +75,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly settings: SettingsService,
+    private readonly limits: PlanLimitsService,
   ) {}
 
   // ---------------------------------------------------------------- leitura
@@ -139,6 +141,7 @@ export class OrdersService {
   // ---------------------------------------------------------------- escrita
 
   async create(dto: CreateOrderDto, user: AuthUser) {
+    await this.limits.assertCanCreateOrder();
     const settings = await this.settings.getAll();
     if (settings.orders.require_technician && !dto.technician_id) {
       throw new BadRequestException('Informe o técnico responsável.');

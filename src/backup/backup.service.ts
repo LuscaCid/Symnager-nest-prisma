@@ -149,7 +149,6 @@ export class BackupService {
       throw new BadRequestException(
         'Envie o arquivo do backup no campo "file".',
       );
-    let ownsLock = false;
     try {
       const admin = await this.prisma.users.findUnique({
         where: { user_id: user.user_id },
@@ -162,12 +161,41 @@ export class BackupService {
           'O arquivo enviado não é um banco SQLite válido.',
         );
       }
-      if (this.restoring)
-        throw new BadRequestException(
-          'Já existe uma restauração em andamento.',
-        );
-      this.restoring = ownsLock = true;
+      const safety = await this.swapDatabase(upload.path);
+      await this.audit.log({
+        action: 'RESTORE',
+        entity: 'backup',
+        user_id: null,
+        meta: {
+          by: user.username,
+          original_name: upload.originalname,
+          safety_copy: path.basename(safety),
+        },
+      });
+      return { ok: true, safety_copy: path.basename(safety) };
+    } finally {
+      fs.promises.unlink(upload.path).catch(() => undefined);
+    }
+  }
 
+  /**
+   * Troca o banco atual pelo arquivo informado: cópia de segurança (VACUUM INTO),
+   * migrações e conferência de administrador; volta ao anterior se algo falhar.
+   * `afterSwap` roda com o banco novo já conectado (ex.: trocar a pasta de fotos).
+   */
+  async swapDatabase(
+    source: string,
+    afterSwap?: () => Promise<void>,
+  ): Promise<string> {
+    if (!(await hasSqliteHeader(source))) {
+      throw new BadRequestException(
+        'O arquivo enviado não é um banco SQLite válido.',
+      );
+    }
+    if (this.restoring)
+      throw new BadRequestException('Já existe uma restauração em andamento.');
+    this.restoring = true;
+    try {
       const dbFile = this.config.databaseFile;
       const safety = `${dbFile}.bak-${stamp()}-${randomBytes(3).toString('hex')}`;
       await this.audit.log({
@@ -182,7 +210,7 @@ export class BackupService {
       );
       await this.prisma.$disconnect();
       try {
-        this.replaceDatabase(upload.path, dbFile);
+        this.replaceDatabase(source, dbFile);
         await runMigrations(
           process.env.DATABASE_URL,
           this.config.migrationsDir,
@@ -193,6 +221,7 @@ export class BackupService {
         });
         if (admins === 0)
           throw new Error('o backup não possui nenhum administrador ativo');
+        await afterSwap?.();
       } catch (e) {
         this.logger.error(
           `Restauração falhou, voltando ao banco anterior: ${(e as Error).message}`,
@@ -204,21 +233,9 @@ export class BackupService {
           `Não foi possível restaurar o backup: ${(e as Error).message}.`,
         );
       }
-
-      await this.audit.log({
-        action: 'RESTORE',
-        entity: 'backup',
-        user_id: null,
-        meta: {
-          by: user.username,
-          original_name: upload.originalname,
-          safety_copy: path.basename(safety),
-        },
-      });
-      return { ok: true, safety_copy: path.basename(safety) };
+      return safety;
     } finally {
-      if (ownsLock) this.restoring = false;
-      fs.promises.unlink(upload.path).catch(() => undefined);
+      this.restoring = false;
     }
   }
 

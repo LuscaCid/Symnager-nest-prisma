@@ -1,6 +1,13 @@
 import { AsyncLocalStorage } from 'async_hooks';
 
-export type RequestContext = { ip: string | null; user_id: number | null };
+import type { PlanLimits } from '../plans/plans';
+
+export type RequestContext = {
+  ip: string | null;
+  user_id: number | null;
+  /** Só na nuvem: cliente (tenant) identificado pela licença da requisição. */
+  tenant?: { id: number; name: string; plan: string; limits: PlanLimits };
+};
 
 // Contexto por requisição (IP e usuário) usado pela auditoria sem precisar
 // passar esses dados por todas as camadas.

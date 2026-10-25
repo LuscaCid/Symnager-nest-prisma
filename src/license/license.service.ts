@@ -6,7 +6,7 @@ import {
   OnApplicationBootstrap,
   OnModuleDestroy,
 } from '@nestjs/common';
-import { createPublicKey, KeyObject, verify } from 'crypto';
+import { createPublicKey, KeyObject } from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -15,20 +15,8 @@ import { loadConfig } from '../config/env';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { getMachineId } from './machine-id';
-
-/** Conteúdo assinado pelo servidor de licenças. */
-type TokenPayload = {
-  v: 1;
-  lid: number;
-  aid: number;
-  machine_id: string;
-  tenant: { id: number; name: string; document: string | null };
-  plan: string;
-  license_expires_at: string | null;
-  iat: number;
-  check_after: number;
-  valid_until: number;
-};
+import { decodeLicenseToken, TokenPayload } from './license-token';
+import { limitsFor, planName } from '../plans/plans';
 
 /** Gravado em <pasta do banco>/license.json (fora do banco: sobrevive a restore). */
 type LicenseFile = {
@@ -102,6 +90,8 @@ export class LicenseService implements OnApplicationBootstrap, OnModuleDestroy {
   }
 
   onApplicationBootstrap() {
+    // Na nuvem não há licença da instalação: cada requisição traz a do cliente.
+    if (loadConfig().appMode === 'cloud') return;
     // Não segura o boot: sem internet a API sobe e usa o token guardado.
     void this.refreshIfDue(true);
     this.timer = setInterval(() => void this.refreshIfDue(), TIMER_MS);
@@ -137,24 +127,18 @@ export class LicenseService implements OnApplicationBootstrap, OnModuleDestroy {
   // ---------- token ----------
 
   private decode(token: string | null): TokenPayload | null {
-    if (!token) return null;
-    const [body, signature] = token.split('.');
-    if (!body || !signature) return null;
-    try {
-      const ok = verify(
-        null,
-        Buffer.from(body),
-        this.publicKey,
-        Buffer.from(signature, 'base64url'),
-      );
-      if (!ok) return null;
-      const payload = JSON.parse(
-        Buffer.from(body, 'base64url').toString('utf8'),
-      ) as TokenPayload;
-      return payload.v === 1 ? payload : null;
-    } catch {
-      return null;
-    }
+    return decodeLicenseToken(token, this.publicKey);
+  }
+
+  /** Token atual, para o processo principal do Electron repassar à nuvem. */
+  currentToken(): string | null {
+    return this.evaluate().valid ? this.state.token : null;
+  }
+
+  /** Limites do plano desta instalação (catálogo + o que veio assinado no token). */
+  limits() {
+    const { payload } = this.evaluate();
+    return limitsFor(payload?.plan, payload?.limits);
   }
 
   /** Avaliação local, sem rede. É o que o guard consulta a cada requisição. */
@@ -232,6 +216,8 @@ export class LicenseService implements OnApplicationBootstrap, OnModuleDestroy {
       key_masked: key ? `${key.slice(0, 5)}•••••-${key.slice(-5)}` : null,
       tenant: payload?.tenant ?? null,
       plan: payload?.plan ?? null,
+      plan_name: payload ? planName(payload.plan) : null,
+      limits: payload ? limitsFor(payload.plan, payload.limits) : null,
       license_expires_at: payload?.license_expires_at ?? null,
       offline_until: payload
         ? new Date(payload.valid_until * 1000).toISOString()
@@ -443,6 +429,54 @@ export class LicenseService implements OnApplicationBootstrap, OnModuleDestroy {
         { statusCode: result.status, ...result.refusal },
         result.status ?? HttpStatus.BAD_REQUEST,
       );
+    return result;
+  }
+
+  /** Evolução do plano: pedido de mudança enviado ao servidor de licenças. */
+  async planRequest(
+    body: { plan: string; message?: string; contact?: string } | null,
+  ) {
+    const key = this.state.key;
+    if (!key)
+      throw new HttpException(
+        {
+          statusCode: 400,
+          message: 'Ative a licença antes de pedir a mudança de plano.',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    const route = body
+      ? 'licenses/plan-request'
+      : 'licenses/plan-request/status';
+    let result: Awaited<ReturnType<LicenseService['call']>>;
+    try {
+      result = await this.call(
+        route,
+        { key, machine_id: this.getMachineId(), ...(body ?? {}) },
+        true,
+      );
+    } catch {
+      throw new HttpException(
+        {
+          statusCode: 503,
+          code: 'LICENSE_SERVER_UNREACHABLE',
+          message:
+            'Não foi possível falar com o servidor de licenças. Verifique a internet e tente novamente.',
+        },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+    if ('refusal' in result && result.refusal)
+      throw new HttpException(
+        { statusCode: result.status, ...result.refusal },
+        result.status ?? HttpStatus.BAD_REQUEST,
+      );
+    if (body)
+      await this.audit.log({
+        action: 'PLAN_REQUEST',
+        entity: 'license',
+        meta: { plan: body.plan },
+      });
     return result;
   }
 

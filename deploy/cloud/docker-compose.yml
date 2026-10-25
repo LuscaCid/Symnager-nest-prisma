@@ -1,0 +1,48 @@
+# Symnager Nuvem: API multi-tenant (um SQLite por cliente) atrás do Nginx do symnager-admin.
+#
+# Não publica porta. O Nginx do symnager-admin (mesmo domínio symnager.${ROOT_DOMAIN})
+# repassa /cloud/* para o alias "symnager-cloud" na rede externa "edge".
+# Subir/derrubar este stack não afeta o servidor de licenças nem os outros produtos da VM.
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  cloud:
+    build:
+      context: ../..
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      NODE_ENV: production
+      APP_MODE: cloud
+      HOST: 0.0.0.0
+      PORT: "3333"
+      DATA_DIR: /data
+      DATABASE_URL: file:/data/root.db
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      REFRESH_TTL_DAYS: ${REFRESH_TTL_DAYS:-30}
+      # Origem da janela do app desktop.
+      CORS_ORIGINS: app://symnager
+      TRUST_PROXY: "true"
+      COOKIE_SECURE: "true"
+    volumes:
+      # Bancos e fotos de todos os clientes. Não use "down -v".
+      - cloud_data:/data
+    networks:
+      default:
+      edge:
+        aliases:
+          - symnager-cloud
+
+networks:
+  edge:
+    external: true
+    name: edge
+
+volumes:
+  cloud_data:

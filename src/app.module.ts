@@ -15,6 +15,10 @@ import { LookupsModule } from './lookups/lookups.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { PublicModule } from './public/public.module';
 import { BackupModule } from './backup/backup.module';
+import { PlansModule } from './plans/plan-limits.service';
+import { PhotosModule } from './photos/photos.module';
+import { SyncModule } from './sync/sync.module';
+import { CloudModule } from './cloud/cloud.module';
 import { HealthController } from './health/health.controller';
 import { LicenseGuard, LicenseModule } from './license/license.module';
 import { JwtAuthGuard, RolesGuard } from './common/guards';
@@ -31,6 +35,7 @@ import { requestContext } from './common/request-context';
     AuditModule,
     SettingsModule,
     LicenseModule,
+    PlansModule,
     AuthModule,
     UsersModule,
     ClientsModule,
@@ -41,6 +46,9 @@ import { requestContext } from './common/request-context';
     DashboardModule,
     PublicModule,
     BackupModule,
+    PhotosModule,
+    SyncModule,
+    CloudModule,
   ],
   controllers: [HealthController],
   providers: [
