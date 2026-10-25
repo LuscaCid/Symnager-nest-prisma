@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows", "darwin", "darwin-arm64", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -10,50 +11,303 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enumerações são guardadas como String (SQLite não tem enum); os valores
+// válidos ficam em src/common/enums.ts.
+
+model users {
+  user_id         Int       @id @default(autoincrement())
+  name            String    @default("")
+  username        String    @unique
+  email           String    @unique
+  password        String
+  role            String    @default("ATENDENTE") // ADMIN | TECNICO | ATENDENTE
+  active          Boolean   @default(true)
+  phone           String?
+  failed_attempts Int       @default(0)
+  locked_until    DateTime?
+  last_login_at   DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @default(now()) @updatedAt
+
+  sessions          sessions[]
+  clients           clients[]
+  orders_created    orders[]            @relation("order_created_by")
+  orders_technician orders[]            @relation("order_technician")
+  payments          payments[]
+  history           order_history[]
+  failures          delivery_failures[] @relation("failure_user")
+  failures_tech     delivery_failures[] @relation("failure_technician")
+  stock_movements   stock_movements[]
+  audit_logs        audit_logs[]
+}
+
+model sessions {
+  session_id   Int       @id @default(autoincrement())
+  user         users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user_id      Int
+  token_hash   String    @unique // sha256 hex do refresh token
+  user_agent   String?
+  ip           String?
+  expires_at   DateTime
+  revoked_at   DateTime?
+  created_at   DateTime  @default(now())
+  last_used_at DateTime?
+
+  @@index([user_id])
+}
+
 model clients {
-  client_id  Int      @id @default(autoincrement())
-  email      String   @unique
-  cpf        String   @unique
+  client_id  Int       @id @default(autoincrement())
+  type       String    @default("PF") // PF | PJ
   name       String
+  document   String? // CPF/CNPJ só dígitos
+  email      String?
   phone      String
-  city       String
-  district   String
-  state      String
-  street     String
-  zipcode    String
-  created_at DateTime @default(now())
-  created    users    @relation(fields: [created_by], references: [user_id])
+  phone2     String?
+  zipcode    String?
+  street     String?
+  number     String?
+  complement String?
+  district   String?
+  city       String?
+  state      String?
+  notes      String?
+  created    users     @relation(fields: [created_by], references: [user_id])
   created_by Int
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now()) @updatedAt
+  deleted_at DateTime?
   orders     orders[]
+
+  @@index([document])
+  @@index([email])
+  @@index([name])
 }
 
 model orders {
-  order_id      Int      @id @default(autoincrement())
-  device        String
-  arrived_at    DateTime @default(now()) // timestamp works at this form
-  owner         clients  @relation(fields: [owner_id], references: [client_id])
-  owner_id      Int
-  description   String
-  tags          tags[]
-  created_by    users    @relation(fields: [created_by_id], references: [user_id])
-  created_by_id Int
-  status        String    @default("PENDING")
+  order_id        Int       @id @default(autoincrement())
+  number          Int       @unique
+  tracking_code   String    @unique
+  status          String    @default("ABERTA")
+  priority        String    @default("NORMAL") // BAIXA | NORMAL | ALTA | URGENTE
+  owner           clients   @relation(fields: [owner_id], references: [client_id])
+  owner_id        Int
+  technician      users?    @relation("order_technician", fields: [technician_id], references: [user_id])
+  technician_id   Int?
+  created_by      users     @relation("order_created_by", fields: [created_by_id], references: [user_id])
+  created_by_id   Int
+  device          String
+  device_type     String?
+  brand           String?
+  model           String?
+  serial          String?
+  accessories     String?
+  condition       String?
+  device_password String?
+  checklist       String? // JSON: [{ item, ok: boolean | null, note? }]
+  description     String
+  diagnosis       String?
+  solution        String?
+  internal_notes  String?
+  arrived_at      DateTime  @default(now())
+  due_date        DateTime?
+  finished_at     DateTime?
+  delivered_at    DateTime?
+  warranty_days   Int       @default(90)
+  warranty_until  DateTime?
+  discount        Float     @default(0)
+  total_services  Float     @default(0)
+  total_products  Float     @default(0)
+  total           Float     @default(0)
+  paid            Float     @default(0)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @default(now()) @updatedAt
+
+  tags            tags[]
+  items           order_items[]
+  payments        payments[]
+  history         order_history[]
+  failures        delivery_failures[]
+  stock_movements stock_movements[]
+
+  @@index([status])
+  @@index([owner_id])
+  @@index([technician_id])
+  @@index([arrived_at])
 }
 
 model tags {
-  tag_id             Int    @id @default(autoincrement())
-  slug               String
-  order              orders @relation(fields: [tags_has_orders_id], references: [order_id])
-  tags_has_orders_id Int
+  tag_id   Int    @id @default(autoincrement())
+  slug     String
+  order    orders @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  order_id Int
+
+  @@index([order_id])
 }
 
-model users {
-  user_id    Int       @id @default(autoincrement())
-  username   String    @unique
-  email      String    @unique
-  password   String
-  created_at DateTime  @default(now())
-  updated_at DateTime  @default(now())
-  orders     orders[]
-  clients    clients[]
+model order_items {
+  item_id     Int       @id @default(autoincrement())
+  order       orders    @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  order_id    Int
+  kind        String // SERVICE | PRODUCT
+  service     services? @relation(fields: [service_id], references: [service_id])
+  service_id  Int?
+  product     products? @relation(fields: [product_id], references: [product_id])
+  product_id  Int?
+  description String
+  quantity    Int       @default(1)
+  unit_price  Float     @default(0)
+  total       Float     @default(0)
+  created_at  DateTime  @default(now())
+
+  @@index([order_id])
+}
+
+model payments {
+  payment_id Int      @id @default(autoincrement())
+  order      orders   @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  order_id   Int
+  method     String
+  amount     Float
+  paid_at    DateTime @default(now())
+  notes      String?
+  user       users?   @relation(fields: [user_id], references: [user_id])
+  user_id    Int?
+  created_at DateTime @default(now())
+
+  @@index([order_id])
+  @@index([paid_at])
+}
+
+model order_history {
+  history_id  Int      @id @default(autoincrement())
+  order       orders   @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  order_id    Int
+  type        String // CREATED | STATUS | COMMENT | ITEM | PAYMENT | FAILURE | UPDATE | PRINT
+  from_status String?
+  to_status   String?
+  message     String?
+  user        users?   @relation(fields: [user_id], references: [user_id])
+  user_id     Int?
+  created_at  DateTime @default(now())
+
+  @@index([order_id])
+}
+
+model delivery_failures {
+  failure_id    Int       @id @default(autoincrement())
+  order         orders    @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  order_id      Int
+  category      String // ENTREGA | GARANTIA | RETRABALHO | PECA | ATRASO | OUTRO
+  reason        String
+  description   String?
+  occurred_at   DateTime  @default(now())
+  resolved      Boolean   @default(false)
+  resolved_at   DateTime?
+  resolution    String?
+  technician    users?    @relation("failure_technician", fields: [technician_id], references: [user_id])
+  technician_id Int?
+  user          users?    @relation("failure_user", fields: [user_id], references: [user_id])
+  user_id       Int?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @default(now()) @updatedAt
+
+  @@index([order_id])
+  @@index([occurred_at])
+}
+
+model services {
+  service_id        Int           @id @default(autoincrement())
+  name              String
+  description       String?
+  price             Float         @default(0)
+  estimated_minutes Int?
+  warranty_days     Int           @default(90)
+  active            Boolean       @default(true)
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @default(now()) @updatedAt
+  items             order_items[]
+}
+
+model products {
+  product_id  Int               @id @default(autoincrement())
+  sku         String?
+  name        String
+  description String?
+  unit        String            @default("UN")
+  cost_price  Float             @default(0)
+  sale_price  Float             @default(0)
+  stock       Int               @default(0)
+  min_stock   Int               @default(0)
+  supplier    suppliers?        @relation(fields: [supplier_id], references: [supplier_id])
+  supplier_id Int?
+  active      Boolean           @default(true)
+  created_at  DateTime          @default(now())
+  updated_at  DateTime          @default(now()) @updatedAt
+  items       order_items[]
+  movements   stock_movements[]
+
+  @@index([sku])
+}
+
+model stock_movements {
+  movement_id Int      @id @default(autoincrement())
+  product     products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+  product_id  Int
+  type        String // IN | OUT | ADJUST | ORDER_OUT | ORDER_IN
+  quantity    Int // positivo entra, negativo sai
+  balance     Int // estoque após o movimento
+  reason      String?
+  order       orders?  @relation(fields: [order_id], references: [order_id], onDelete: SetNull)
+  order_id    Int?
+  user        users?   @relation(fields: [user_id], references: [user_id])
+  user_id     Int?
+  created_at  DateTime @default(now())
+
+  @@index([product_id])
+}
+
+model suppliers {
+  supplier_id Int        @id @default(autoincrement())
+  name        String
+  document    String?
+  email       String?
+  phone       String?
+  contact     String?
+  notes       String?
+  active      Boolean    @default(true)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @default(now()) @updatedAt
+  products    products[]
+}
+
+model lookups {
+  lookup_id  Int      @id @default(autoincrement())
+  kind       String // DEVICE_TYPE | BRAND | PAYMENT_METHOD | FAILURE_REASON | ACCESSORY | CHECKLIST
+  name       String
+  active     Boolean  @default(true)
+  sort       Int      @default(0)
+  created_at DateTime @default(now())
+
+  @@unique([kind, name])
+}
+
+model settings {
+  key        String   @id
+  value      String // JSON
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model audit_logs {
+  audit_id   Int      @id @default(autoincrement())
+  user       users?   @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
+  user_id    Int?
+  action     String
+  entity     String
+  entity_id  String?
+  ip         String?
+  meta       String? // JSON
+  created_at DateTime @default(now())
+
+  @@index([created_at])
 }

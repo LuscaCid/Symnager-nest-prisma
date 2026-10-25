@@ -1,28 +1,60 @@
-import { Module } from '@nestjs/common';
-import { ClientModule } from './Clients/Clients.module';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { NextFunction, Request, Response } from 'express';
 import { PrismaModule } from './database/prisma.module';
+import { AuditModule } from './audit/audit.module';
+import { SettingsModule } from './settings/settings.module';
 import { AuthModule } from './auth/auth.module';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { AuthGuard } from './auth/auth.guard';
-import { OrdersModule } from './Orders/orders.module';
-import { VerifyUserInRequest } from './auth/revoke-request';
+import { UsersModule } from './users/users.module';
+import { ClientsModule } from './clients/clients.module';
+import { OrdersModule } from './orders/orders.module';
+import { FailuresModule } from './failures/failures.module';
+import { CatalogModule } from './catalog/catalog.module';
+import { LookupsModule } from './lookups/lookups.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { PublicModule } from './public/public.module';
+import { BackupModule } from './backup/backup.module';
+import { HealthController } from './health/health.controller';
+import { JwtAuthGuard, RolesGuard } from './common/guards';
+import { AllExceptionsFilter } from './common/all-exceptions.filter';
+import { requestContext } from './common/request-context';
 
 @Module({
   imports: [
-    AuthModule, 
-    ClientModule, 
-    PrismaModule, 
-    OrdersModule
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 300 }],
+      errorMessage: 'Muitas requisições. Aguarde um momento e tente novamente.',
+    }),
+    PrismaModule,
+    AuditModule,
+    SettingsModule,
+    AuthModule,
+    UsersModule,
+    ClientsModule,
+    OrdersModule,
+    FailuresModule,
+    CatalogModule,
+    LookupsModule,
+    DashboardModule,
+    PublicModule,
+    BackupModule,
   ],
+  controllers: [HealthController],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: AuthGuard,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: VerifyUserInRequest,
-    },
+    // Ordem importa: rate limit -> autenticação -> papéis.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply((req: Request, _res: Response, next: NextFunction) =>
+        requestContext.run({ ip: req.ip ?? null, user_id: null }, next),
+      )
+      .forRoutes('*');
+  }
+}
