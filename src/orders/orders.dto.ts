@@ -15,6 +15,7 @@ import {
   Max,
   MaxLength,
   Min,
+  Matches,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
@@ -128,6 +129,12 @@ export class UpdateOrderDto extends PartialType(
 export class UpdateStatusDto {
   @IsIn(ORDER_STATUSES) status: OrderStatus;
   @IsOptional() @Trim() @IsString() @MaxLength(2000) message?: string | null;
+  /** Coluna do quadro (settings.board.columns[].key); omitida = coluna padrão do status. */
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
+  @IsString()
+  @Matches(/^[a-z0-9_]{1,30}$/)
+  column?: string | null;
 }
 
 export class CreatePaymentDto {

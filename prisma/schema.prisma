@@ -110,6 +110,7 @@ model orders {
   service_address String? // atendimento no local (ramos com visita)
   scheduled_at    DateTime?
   custom_fields   String? // JSON: { chave: valor } (campos do ramo e da empresa)
+  board_column    String? // coluna personalizada do quadro (settings.board.columns[].key)
   description     String
   diagnosis       String?
   solution        String?

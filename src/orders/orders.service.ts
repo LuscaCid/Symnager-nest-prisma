@@ -306,7 +306,43 @@ export class OrdersService {
   async updateStatus(id: number, dto: UpdateStatusDto, user: AuthUser) {
     const current = await this.getOrder(id);
     const to = dto.status;
-    if (current.status === to) return this.findById(id);
+    const settings = await this.settings.getAll();
+    const columns = settings.board.columns;
+    const column =
+      dto.column && columns.some((c) => c.key === dto.column && c.status === to)
+        ? dto.column
+        : null;
+    if (dto.column && !column)
+      throw new BadRequestException(
+        'Essa coluna do quadro não existe ou não é deste status.',
+      );
+    const statusLabel = (s: string) =>
+      segmentProfile(settings.segment.id).status_labels[s as OrderStatus] ??
+      STATUS_LABEL[s as OrderStatus] ??
+      s;
+    // Mesmo status: só move o cartão entre colunas do quadro.
+    if (current.status === to) {
+      if (dto.column === undefined || column === current.board_column)
+        return this.findById(id);
+      const name = (key: string | null) => {
+        const col =
+          columns.find((c) => c.key === key && c.status === to) ??
+          columns.find((c) => c.status === to);
+        return col?.label || statusLabel(to);
+      };
+      await this.prisma.$transaction(async (tx) => {
+        await tx.orders.update({
+          where: { order_id: id },
+          data: { board_column: column },
+        });
+        await this.history(tx, id, user, 'STATUS', {
+          from_status: current.status,
+          to_status: to,
+          message: `Quadro: ${name(current.board_column)} → ${name(column)}`,
+        });
+      });
+      return this.findById(id);
+    }
     if (to === 'CANCELADA' && !dto.message) {
       throw new BadRequestException('Informe o motivo do cancelamento.');
     }
@@ -325,7 +361,7 @@ export class OrdersService {
     }
 
     const now = new Date();
-    const data: Prisma.ordersUpdateInput = { status: to };
+    const data: Prisma.ordersUpdateInput = { status: to, board_column: column };
     if (to === 'PRONTA') {
       data.finished_at = now;
     } else if (to === 'ENTREGUE') {
@@ -342,7 +378,7 @@ export class OrdersService {
 
     await this.prisma.$transaction(async (tx) => {
       await tx.orders.update({ where: { order_id: id }, data });
-      const label = `${STATUS_LABEL[current.status as OrderStatus] ?? current.status} → ${STATUS_LABEL[to]}`;
+      const label = `${statusLabel(current.status)} → ${statusLabel(to)}`;
       await this.history(tx, id, user, 'STATUS', {
         from_status: current.status,
         to_status: to,

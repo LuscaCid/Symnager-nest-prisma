@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsIn,
@@ -14,6 +15,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import { ORDER_STATUSES, OrderStatus } from '../common/enums';
 import {
   CustomFieldDef,
   DEFAULT_SEGMENT,
@@ -21,6 +23,23 @@ import {
 } from '../segments/segment-catalog';
 
 export const MAX_CUSTOM_FIELDS = 6;
+export const MAX_BOARD_COLUMNS = 20;
+
+export interface BoardColumn {
+  /** Identificador estável (gravado em orders.board_column). */
+  key: string;
+  /** Vazio = nome do status no ramo atual. */
+  label: string;
+  /** #rrggbb; vazio = cor padrão do status. */
+  color: string;
+  /** Status do sistema que a OS recebe ao entrar na coluna. */
+  status: OrderStatus;
+}
+
+/** Uma coluna por status, na ordem do fluxo (o quadro de antes). */
+export const DEFAULT_BOARD_COLUMNS: BoardColumn[] = ORDER_STATUSES.map(
+  (status) => ({ key: status.toLowerCase(), label: '', color: '', status }),
+);
 
 // Data URL de imagem com até ~300 KB de conteúdo (base64 ≈ 4/3 do tamanho).
 const LOGO_MAX_CHARS = 410_000;
@@ -114,6 +133,31 @@ class CertificateSettingsDto {
   @IsOptional() @IsBoolean() show_qrcode?: boolean;
 }
 
+class BoardColumnDto {
+  @IsString()
+  @Matches(/^[a-z0-9_]{1,30}$/, {
+    message: 'A chave da coluna deve ter letras minúsculas, números ou _.',
+  })
+  key: string;
+  @IsString() @MaxLength(40) label: string;
+  @IsString()
+  @Matches(/^(#[0-9a-fA-F]{6})?$/, { message: 'Cor inválida.' })
+  color: string;
+  @IsIn(ORDER_STATUSES) status: OrderStatus;
+}
+
+class BoardSettingsDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1, { message: 'O quadro precisa de pelo menos uma coluna.' })
+  @ArrayMaxSize(MAX_BOARD_COLUMNS, {
+    message: `Use no máximo ${MAX_BOARD_COLUMNS} colunas.`,
+  })
+  @ValidateNested({ each: true })
+  @Type(() => BoardColumnDto)
+  columns?: BoardColumnDto[];
+}
+
 class PrintSettingsDto {
   @IsOptional() @IsIn(['A4', 'THERMAL']) layout?: 'A4' | 'THERMAL';
   @IsOptional() @IsInt() @Min(1) @Max(5) copies?: number;
@@ -142,6 +186,10 @@ export class UpdateSettingsDto {
   @ValidateNested()
   @Type(() => CertificateSettingsDto)
   certificates?: CertificateSettingsDto;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BoardSettingsDto)
+  board?: BoardSettingsDto;
 }
 
 export const DEFAULT_SETTINGS = {
@@ -185,6 +233,9 @@ export const DEFAULT_SETTINGS = {
     /** Texto livre impresso no rodapé dos certificados. */
     notes: '',
     show_qrcode: true,
+  },
+  board: {
+    columns: DEFAULT_BOARD_COLUMNS,
   },
 };
 

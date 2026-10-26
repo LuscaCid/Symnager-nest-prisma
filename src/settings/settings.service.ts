@@ -12,6 +12,8 @@ import { AuditService } from '../audit/audit.service';
 import { loadConfig } from '../config/env';
 import {
   APP_SIGNATURE,
+  BoardColumn,
+  DEFAULT_BOARD_COLUMNS,
   DEFAULT_SETTINGS,
   Settings,
   UpdateSettingsDto,
@@ -43,6 +45,9 @@ export class SettingsService {
     if (!isSegmentId(segment.id)) segment.id = DEFAULT_SEGMENT;
     if (!Array.isArray(segment.applied)) segment.applied = [];
     if (!Array.isArray(segment.custom_fields)) segment.custom_fields = [];
+    const board = result.board;
+    if (!Array.isArray(board.columns) || !board.columns.length)
+      board.columns = structuredClone(DEFAULT_BOARD_COLUMNS);
     return result;
   }
 
@@ -58,7 +63,7 @@ export class SettingsService {
     });
   }
 
-  /** Merge parcial por seção (company/orders/print). */
+  /** Merge parcial por seção (company/orders/print/segment/certificates/board). */
   async update(
     dto: UpdateSettingsDto,
     db: Db = this.prisma,
@@ -76,6 +81,15 @@ export class SettingsService {
             current.segment.custom_fields,
             patch.custom_fields as CustomFieldDef[],
           );
+      }
+      if (key === 'board' && patch.columns) {
+        const keys = new Set<string>();
+        for (const col of patch.columns as BoardColumn[]) {
+          if (keys.has(col.key))
+            throw new BadRequestException(`Coluna repetida: ${col.key}.`);
+          keys.add(col.key);
+          col.label = col.label.trim();
+        }
       }
       const value = JSON.stringify({ ...current[key], ...patch });
       await db.settings.upsert({
